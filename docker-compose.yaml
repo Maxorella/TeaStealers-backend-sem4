@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  main:
+    container_name: mainService
+    build:
+      context: ./
+      dockerfile: ./build/main.Dockerfile
+    ports:
+      - '8080:8080'
+    env_file:
+      - .env
+    networks:
+      - ouzi-network
+
+volumes:
+  postgresdb-data:
+    driver: local
+
+networks:
+  ouzi-network:
+    name: ouzi-network
+    driver: bridge
