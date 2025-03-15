@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/audio"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/config"
+	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/utils"
+	"github.com/satori/uuid"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -16,29 +18,41 @@ import (
 )
 
 const (
-	SignUpMethod    = "SignUp"
-	LoginMethod     = "Login"
-	LogoutMethod    = "Logout"
-	CheckAuthMethod = "CheckAuth"
+	AudioHandle = "AudioHandler"
 )
 
 type AudioHandler struct {
 	// uc represents the usecase interface for authentication.
-	uc audio.AudioUsecase
+	uc     audio.AudioUsecase
+	logger logger.Logger
 }
 
 // NewAuthHandler creates a new instance of AuthHandler.
-func NewAudioHandler(uc audio.AudioUsecase) *AudioHandler {
-	return &AudioHandler{uc: uc}
+func NewAudioHandler(uc audio.AudioUsecase, logr logger.Logger) *AudioHandler {
+	return &AudioHandler{uc: uc, logger: logr}
+
 }
 
 // audio.AudioUsecase GetTranscription
 
 func (h *AudioHandler) SaveAudio(w http.ResponseWriter, r *http.Request) {
+	cfg := config.MustLoad()
+
+	// ctx.Value("requestId").(string)
+	// ctx := r.Context()
+	requestId, ok := r.Context().Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+		// ctx = context.WithValue(r.Context(), "requestId", requestId)
+	}
+
+	h.logger.LogInfo(requestId, logger.DeliveryLayer, AudioHandle, "ok")
+
 	if err := r.ParseMultipartForm(5 << 20); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "max size file 5 mb")
 		return
 	}
+	h.logger.LogInfo(requestId, logger.DeliveryLayer, AudioHandle, "ok2")
 
 	file, head, err := r.FormFile("file")
 	if err != nil {
@@ -46,6 +60,7 @@ func (h *AudioHandler) SaveAudio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
+	h.logger.LogInfo(requestId, logger.DeliveryLayer, AudioHandle, "ok3")
 
 	allowedExtensions := []string{".wav", ".mp3"}
 	fileType := strings.ToLower(filepath.Ext(head.Filename))
@@ -54,7 +69,7 @@ func (h *AudioHandler) SaveAudio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	audioDir := "/ouzi/audio"
+	audioDir := cfg.AudioUserDir
 	filePath := filepath.Join(audioDir, head.Filename)
 	out, err := os.Create(filePath)
 	if err != nil {

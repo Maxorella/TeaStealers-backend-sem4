@@ -6,6 +6,7 @@ import (
 	"fmt"
 	audioHl "github.com/TeaStealers-backend-sem4/internal/pkg/audio/delivery"
 	audioUc "github.com/TeaStealers-backend-sem4/internal/pkg/audio/usecase"
+	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/middleware"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -17,14 +18,15 @@ import (
 )
 
 func main() {
+	logr := logger.NewSlogLogger("log.txt")
 
 	_ = godotenv.Load()
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
-	r.Use(middleware.CORSMiddleware)
+	r.Use(middleware.CORSMiddleware, middleware.AccessLogMiddleware)
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)
 
 	aUc := audioUc.NewAudioUsecase()
-	auHandler := audioHl.NewAudioHandler(aUc)
+	auHandler := audioHl.NewAudioHandler(aUc, logr)
 
 	audio := r.PathPrefix("/audio").Subrouter()
 	audio.Handle("/save_audio", http.HandlerFunc(auHandler.SaveAudio)).Methods(http.MethodPost, http.MethodOptions)
