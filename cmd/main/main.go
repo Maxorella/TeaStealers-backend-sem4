@@ -8,6 +8,7 @@ import (
 	audioUc "github.com/TeaStealers-backend-sem4/internal/pkg/audio/usecase"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/middleware"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +17,8 @@ import (
 )
 
 func main() {
+
+	_ = godotenv.Load()
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
 	r.Use(middleware.CORSMiddleware)
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/audio"
+	"github.com/TeaStealers-backend-sem4/internal/pkg/config"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/utils"
 	"io"
 	"mime/multipart"
@@ -82,6 +83,8 @@ func (h *AudioHandler) SaveAudio(w http.ResponseWriter, r *http.Request) {
 
 func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
 	// Парсим multipart/form-data запрос с ограничением размера файла (5 МБ)
+	cfg := config.MustLoad()
+
 	if err := r.ParseMultipartForm(5 << 20); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "max size file 5 mb")
 		return
@@ -104,7 +107,7 @@ func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Создаем временный файл для сохранения аудио
-	audioDir := "/ouzi/audio"
+	audioDir := cfg.AudioUserDir
 	tempFile, err := os.CreateTemp(audioDir, "audio-"+fileType)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "unable to create temp file")
@@ -122,8 +125,7 @@ func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
 	// Закрываем временный файл, чтобы убедиться, что данные записаны
 	tempFile.Close()
 
-	// Отправляем файл в ML-сервис
-	mlServiceURL := "http://178.57.232.224:5000/transcribe"
+	mlServiceURL := "http://" + cfg.MlServer.Address + ":" + cfg.MlServer.Port + "/transcribe"
 	response, err := sendFileToMLService(mlServiceURL, tempFile.Name())
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "unable to send file to ML service")
