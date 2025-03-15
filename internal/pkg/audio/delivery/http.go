@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/audio"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/utils"
 	"io"
@@ -130,20 +131,32 @@ func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
 	}
 	defer response.Body.Close()
 
-	// Читаем ответ от ML-сервиса
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "unable to read ML service response")
 		return
 	}
 
+	var mlResponse struct {
+		Transcription string `json:"transcription"`
+	}
+	if err := json.Unmarshal(body, &mlResponse); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "unable to parse ML service response")
+		return
+	}
+
+	// Формируем собственный JSON-ответ
+	responseData := map[string]string{
+		"transcription": mlResponse.Transcription,
+	}
+
 	// Возвращаем транскрипцию клиенту
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(body) //TODO свой ответ!!
+	if err := utils.WriteResponse(w, http.StatusOK, responseData); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 }
 
-// sendFileToMLService отправляет файл в ML-сервис
 func sendFileToMLService(url, filePath string) (*http.Response, error) {
 	// Открываем файл
 	file, err := os.Open(filePath)
