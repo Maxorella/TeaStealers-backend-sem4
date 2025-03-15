@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	audioHl "github.com/TeaStealers-backend-sem4/internal/pkg/audio/delivery"
+	audioUc "github.com/TeaStealers-backend-sem4/internal/pkg/audio/usecase"
 	"github.com/gorilla/mux"
 	"net/http"
 	"os"
@@ -16,6 +18,13 @@ func main() {
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
 	// r.Use(middleware.CORSMiddleware)
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)
+
+	aUc := audioUc.NewAudioUsecase()
+	auHandler := audioHl.NewAudioHandler(aUc)
+
+	audio := r.PathPrefix("/audio").Subrouter()
+	audio.Handle("/save_audio", http.HandlerFunc(auHandler.SaveAudio)).Methods(http.MethodPost, http.MethodOptions)
+	audio.Handle("/translate_audio", http.HandlerFunc(auHandler.TranslateAudio)).Methods(http.MethodPost, http.MethodOptions)
 
 	srv := &http.Server{
 		Addr:              ":8080",
