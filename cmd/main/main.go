@@ -8,6 +8,8 @@ import (
 	audioUc "github.com/TeaStealers-backend-sem4/internal/pkg/audio/usecase"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/middleware"
+	wordH "github.com/TeaStealers-backend-sem4/internal/pkg/words/delivery"
+	wordUc "github.com/TeaStealers-backend-sem4/internal/pkg/words/usecase"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"net/http"
@@ -28,6 +30,10 @@ func main() {
 	aUc := audioUc.NewAudioUsecase()
 	auHandler := audioHl.NewAudioHandler(aUc, logr)
 
+	wUc := wordUc.NewAudioUsecase()
+	wHandler := wordH.NewWordHandler(wUc, logr)
+	word := r.PathPrefix("/word").Subrouter()
+	word.Handle("/get_word/{word}", http.HandlerFunc(wHandler.GetWord)).Methods(http.MethodGet)
 	audio := r.PathPrefix("/audio").Subrouter()
 	audio.Handle("/save_audio", http.HandlerFunc(auHandler.SaveAudio)).Methods(http.MethodPost, http.MethodOptions)
 	audio.Handle("/translate_audio", http.HandlerFunc(auHandler.TranslateAudio)).Methods(http.MethodPost, http.MethodOptions)
