@@ -9,13 +9,13 @@ services:
     env_file:
       - .env
     volumes:
-      - "ouzi_dir:/ouzi/audio"
+      - "ouzi_dir:/ouzi/audio"  # Именованный volume для хранения аудио
+      - "./examples/hello.wav:/ouzi/examples/hello.wav"  # Bind mount для локального файла
     networks:
       - ouzi-network
 
-
 volumes:
-  ouzi_dir:  # Определяем именованный volume
+  ouzi_dir:  # Именованный volume
     driver: local
 
 networks:

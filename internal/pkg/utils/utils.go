@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
+	"mime/multipart"
 	"net/http"
 )
 
@@ -40,6 +42,39 @@ func WriteResponse(w http.ResponseWriter, statusCode int, response interface{}) 
 	_, _ = w.Write(resp)
 
 	return nil
+}
+
+// WriteAudioResponse отправляет файл в ответе HTTP в формате multipart/form-data
+func WriteAudioResponse(w http.ResponseWriter, statusCode int, fileName string, fileContent []byte, text string) error {
+	// Создаем буфер для хранения multipart/form-data
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+
+	// Добавляем файл в форму
+	fileWriter, err := writer.CreateFormFile("audio", fileName)
+	if err != nil {
+		return err
+	}
+	_, err = fileWriter.Write(fileContent)
+	if err != nil {
+		return err
+	}
+
+	_ = writer.WriteField("text", text)
+
+	// Закрываем writer, чтобы завершить формирование multipart/form-data
+	err = writer.Close()
+	if err != nil {
+		return err
+	}
+
+	// Устанавливаем заголовок Content-Type
+	w.Header().Set("Content-Type", writer.FormDataContentType())
+	w.WriteHeader(statusCode)
+
+	// Отправляем ответ
+	_, err = io.Copy(w, &body)
+	return err
 }
 
 // ReadRequestData reads and parses the request body into the provided structure.

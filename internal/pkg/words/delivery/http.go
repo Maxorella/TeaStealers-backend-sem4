@@ -2,12 +2,16 @@ package delivery
 
 import (
 	"errors"
+	"github.com/TeaStealers-backend-sem4/internal/pkg/config"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/utils"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/words"
 	"github.com/gorilla/mux"
 	"github.com/satori/uuid"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 )
 
 const (
@@ -30,7 +34,7 @@ func NewWordHandler(uc words.WordUsecase, logr logger.Logger) *WordHandler {
 // audio.AudioUsecase GetTranscription
 
 func (h *WordHandler) GetWord(w http.ResponseWriter, r *http.Request) {
-	// cfg := config.MustLoad()
+	cfg := config.MustLoad()
 
 	// ctx.Value("requestId").(string)
 	// ctx := r.Context()
@@ -48,10 +52,28 @@ func (h *WordHandler) GetWord(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Отправляем успешный ответ
-	if err := utils.WriteResponse(w, http.StatusOK, word); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "error write response")
+	audioDir := cfg.AudioExampleDir
+	audioFilePath := filepath.Join(audioDir, word+".wav") // .wav
+	audioFile, err := os.Open(audioFilePath)
+	if err != nil {
+		utils.WriteError(w, http.StatusNotFound, "audio not found")
 		return
 	}
+	defer audioFile.Close()
+
+	audioContent, err := io.ReadAll(audioFile)
+	if err != nil {
+		h.logger.LogErrorResponse(requestId, utils.DeliveryLayer, "GetWord", err, http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "failed to read audio file")
+		return
+	}
+
+	if err := utils.WriteAudioResponse(w, http.StatusOK, word+".wav", audioContent, word); err != nil {
+		h.logger.LogErrorResponse(requestId, utils.DeliveryLayer, "GetWord", err, http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "error writing response")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, utils.DeliveryLayer, "GetWord")
 
 }

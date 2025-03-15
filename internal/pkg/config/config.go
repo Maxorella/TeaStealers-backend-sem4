@@ -10,8 +10,9 @@ import (
 )
 
 type Config struct {
-	MlServer     MlService
-	AudioUserDir string `env:"USER_AUDIO_DIR" env-default:"/ouzi/audio"`
+	MlServer        MlService
+	AudioUserDir    string `env:"USER_AUDIO_DIR" env-default:"/ouzi/audio"`
+	AudioExampleDir string `env:"EXAMPLE_AUDIO_DIR" env-default:"/ouzi/examples/"`
 }
 
 type MlService struct {
