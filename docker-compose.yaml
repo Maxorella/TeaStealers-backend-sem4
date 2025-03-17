@@ -10,14 +10,42 @@ services:
       - .env
     volumes:
       - "ouzi_dir:/ouzi/audio"  # Именованный volume для хранения аудио
-      - "./examples/hello.wav:/ouzi/examples/hello.wav"  # Bind mount для локального файла
+#- "./examples/hello.wav:/ouzi/examples/hello.wav"  # Bind mount для локального файла
     networks:
       - ouzi-network
+  minio:
+    image: quay.io/minio/minio:latest
+    command: server --console-address ":9001" http://minio_data
+    expose:
+      - "9000"
+      - "9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - minio_data
+  minioclient:
+      container_name: minioClient
+      build:
+        context: ./
+        dockerfile: ./build/minioClient.Dockerfile
+      ports:
+        - '8081:8081'
+      env_file:
+        - .env
+      networks:
+        - ouzi-network
 
 volumes:
   ouzi_dir:  # Именованный volume
     driver: local
-
+  minio_data:  # Именованный volume для MinIO
+    driver: local
 networks:
   ouzi-network:
     name: ouzi-network
