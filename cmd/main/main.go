@@ -6,6 +6,7 @@ import (
 	"fmt"
 	audioHl "github.com/TeaStealers-backend-sem4/internal/pkg/audio/delivery"
 	audioUc "github.com/TeaStealers-backend-sem4/internal/pkg/audio/usecase"
+	"github.com/TeaStealers-backend-sem4/internal/pkg/config"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/middleware"
 	wordH "github.com/TeaStealers-backend-sem4/internal/pkg/words/delivery"
@@ -20,7 +21,10 @@ import (
 )
 
 func main() {
-	logr := logger.NewSlogLogger("log.txt")
+	cfg := config.MustLoad()
+	logr := logger.NewSlogStdOutLogger()
+	logr.LogDebug("STARTED SLOG STDOUT")
+	//logr := logger.NewSlogLogger("log.txt")
 
 	_ = godotenv.Load()
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
@@ -28,12 +32,13 @@ func main() {
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)
 
 	aUc := audioUc.NewAudioUsecase()
-	auHandler := audioHl.NewAudioHandler(aUc, logr)
+	auHandler := audioHl.NewAudioHandler(aUc, cfg, logr)
 
 	wUc := wordUc.NewAudioUsecase()
-	wHandler := wordH.NewWordHandler(wUc, logr)
+	wHandler := wordH.NewWordHandler(wUc, cfg, logr)
 	word := r.PathPrefix("/word").Subrouter()
 	word.Handle("/get_word/{word}", http.HandlerFunc(wHandler.GetWord)).Methods(http.MethodGet)
+
 	audio := r.PathPrefix("/audio").Subrouter()
 	audio.Handle("/save_audio", http.HandlerFunc(auHandler.SaveAudio)).Methods(http.MethodPost, http.MethodOptions)
 	audio.Handle("/translate_audio", http.HandlerFunc(auHandler.TranslateAudio)).Methods(http.MethodPost, http.MethodOptions)

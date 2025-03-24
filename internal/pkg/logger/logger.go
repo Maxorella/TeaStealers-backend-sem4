@@ -14,6 +14,7 @@ const (
 )
 
 type Logger interface {
+	LogDebug(message string)
 	LogInfo(requestId string, layer string, methodName string, message string)
 	LogError(requestId string, layer string, methodName string, err error)
 	LogErrorResponse(requestId string, layer string, methodName string, err error, status int)
@@ -23,6 +24,16 @@ type Logger interface {
 
 type SlogLogger struct {
 	logger *slog.Logger
+}
+
+func NewSlogStdOutLogger() *SlogLogger {
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+
+	return &SlogLogger{
+		logger: slog.New(handler),
+	}
 }
 
 func NewSlogLogger(logFile string) *SlogLogger {
@@ -39,6 +50,12 @@ func NewSlogLogger(logFile string) *SlogLogger {
 	return &SlogLogger{
 		logger: slog.New(handler),
 	}
+}
+
+func (l *SlogLogger) LogDebug(message string) {
+	l.logger.Debug(
+		fmt.Sprintf("MESSAGE: %v", message),
+	)
 }
 
 func (l *SlogLogger) LogInfo(requestId string, layer string, methodName string, message string) {

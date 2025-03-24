@@ -17,7 +17,7 @@ type Config struct {
 }
 
 type MinioS3 struct {
-	MinioEndpoint     string `env:"MINIO_ENDPOINT" env-default:"localhost:9000"`
+	MinioEndpoint     string `env:"MINIO_ENDPOINT" env-default:"host.docker.internal:9000"`
 	BucketName        string `env:"MINIO_BUCKET_NAME" env-default:"defaultbucket"`
 	MinioRootUser     string `env:"MINIO_ROOT_USER" env-default:"minioadmin"`
 	MinioRootPassword string `env:"MINIO_ROOT_PASSWORD" env-default:"minioadmin"`

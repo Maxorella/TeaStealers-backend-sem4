@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/config"
+	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/middleware"
 	minioS "github.com/TeaStealers-backend-sem4/internal/pkg/minio"
 	minioH "github.com/TeaStealers-backend-sem4/internal/pkg/minio/delivery"
@@ -19,10 +20,12 @@ import (
 )
 
 func main() {
-	// logr := logger.NewSlogLogger("log.txt")
+	//logr := logger.NewSlogLogger("log.txt")
+	logr := logger.NewSlogStdOutLogger()
+	logr.LogDebug("Started minio client logger")
+
 	_ = godotenv.Load()
 	cfg := config.MustLoad()
-
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
 	r.Use(middleware.CORSMiddleware, middleware.AccessLogMiddleware)
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)
@@ -30,7 +33,8 @@ func main() {
 	err := minClient.InitMinio()
 	if err != nil {
 		fmt.Println(err)
-		panic(err)
+		logr.LogDebug(err.Error())
+		os.Exit(-1)
 	}
 	minH := minioH.NewMinioHandler(minClient)
 	minH.RegisterRoutes(r)

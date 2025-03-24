@@ -25,18 +25,18 @@ type AudioHandler struct {
 	// uc represents the usecase interface for authentication.
 	uc     audio.AudioUsecase
 	logger logger.Logger
+	cfg    *config.Config
 }
 
 // NewAuthHandler creates a new instance of AuthHandler.
-func NewAudioHandler(uc audio.AudioUsecase, logr logger.Logger) *AudioHandler {
-	return &AudioHandler{uc: uc, logger: logr}
+func NewAudioHandler(uc audio.AudioUsecase, cfg *config.Config, logr logger.Logger) *AudioHandler {
+	return &AudioHandler{uc: uc, cfg: cfg, logger: logr}
 
 }
 
 // audio.AudioUsecase GetTranscription
 
 func (h *AudioHandler) SaveAudio(w http.ResponseWriter, r *http.Request) {
-	cfg := config.MustLoad()
 
 	// ctx.Value("requestId").(string)
 	// ctx := r.Context()
@@ -69,7 +69,7 @@ func (h *AudioHandler) SaveAudio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	audioDir := cfg.AudioUserDir
+	audioDir := h.cfg.AudioUserDir
 	filePath := filepath.Join(audioDir, head.Filename)
 	out, err := os.Create(filePath)
 	if err != nil {
@@ -97,8 +97,14 @@ func (h *AudioHandler) SaveAudio(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
+	requestId, ok := r.Context().Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+		// ctx = context.WithValue(r.Context(), "requestId", requestId)
+	}
 	// Парсим multipart/form-data запрос с ограничением размера файла (5 МБ)
-	cfg := config.MustLoad()
+	h.logger.LogDebug("IN Translate Audio")
+	h.logger.LogDebug(requestId)
 
 	if err := r.ParseMultipartForm(5 << 20); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, "max size file 5 mb")
@@ -122,7 +128,7 @@ func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Создаем временный файл для сохранения аудио
-	audioDir := cfg.AudioUserDir
+	audioDir := h.cfg.AudioUserDir
 	tempFile, err := os.CreateTemp(audioDir, "audio-"+fileType)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "unable to create temp file")
@@ -140,7 +146,7 @@ func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
 	// Закрываем временный файл, чтобы убедиться, что данные записаны
 	tempFile.Close()
 
-	mlServiceURL := "http://" + cfg.MlServer.Address + ":" + cfg.MlServer.Port + "/transcribe"
+	mlServiceURL := "http://" + h.cfg.MlServer.Address + ":" + h.cfg.MlServer.Port + "/transcribe"
 	response, err := sendFileToMLService(mlServiceURL, tempFile.Name())
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "unable to send file to ML service")
