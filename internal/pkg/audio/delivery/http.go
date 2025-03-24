@@ -2,7 +2,9 @@ package delivery
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/audio"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/config"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
@@ -15,6 +17,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 )
 
 const (
@@ -147,9 +150,17 @@ func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
 	tempFile.Close()
 
 	mlServiceURL := "http://" + h.cfg.MlServer.Address + ":" + h.cfg.MlServer.Port + "/transcribe"
-	response, err := sendFileToMLService(mlServiceURL, tempFile.Name())
+	client := &http.Client{
+		Timeout: 2 * time.Second,
+	}
+
+	response, err := sendFileToMLService(client, mlServiceURL, tempFile.Name())
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, "unable to send file to ML service")
+		if errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "timeout") {
+			utils.WriteError(w, http.StatusGatewayTimeout, "ML service timeout")
+		} else {
+			utils.WriteError(w, http.StatusInternalServerError, "ML service unavailable")
+		}
 		return
 	}
 	defer response.Body.Close()
@@ -180,15 +191,13 @@ func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func sendFileToMLService(url, filePath string) (*http.Response, error) {
-	// Открываем файл
+func sendFileToMLService(client *http.Client, url, filePath string) (*http.Response, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	// Создаем multipart/form-data запрос
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("file", filepath.Base(filePath))
@@ -196,23 +205,16 @@ func sendFileToMLService(url, filePath string) (*http.Response, error) {
 		return nil, err
 	}
 
-	// Копируем содержимое файла в запрос
-	_, err = io.Copy(part, file)
-	if err != nil {
+	if _, err = io.Copy(part, file); err != nil {
 		return nil, err
 	}
-
-	// Закрываем writer, чтобы завершить формирование запроса
 	writer.Close()
 
-	// Создаем HTTP-запрос
 	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	// Отправляем запрос
-	client := &http.Client{}
 	return client.Do(req)
 }
