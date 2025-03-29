@@ -1,5 +1,29 @@
 services:
+  db:
+    container_name: postgres
+    image: postgres
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: always
+    build:
+      context: .
+      dockerfile: ./build/postgres.Dockerfile
+    volumes:
+      - postgresdb-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${DB_PORT}:5432"
+    networks:
+      - ouzi-network
   main:
+    depends_on:
+    - db
     container_name: mainService
     build:
       context: ./
@@ -34,6 +58,7 @@ services:
   minioclient:
       depends_on:
         - minio
+        - db
       container_name: minioClient
       build:
         context: ./
