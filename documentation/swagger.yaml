@@ -1,660 +1,484 @@
-basePath: /api
-definitions:
-  models.Advert:
-    properties:
-      buildingid:
-        description: BuildingId is the id of the building to which the advert belongs.
-        type: string
-      companyid:
-        description: CompanyId is the id of the company to which the advert belongs.
-        type: string
-      datacreation:
-        description: DataCreation is the time of adding a record to the database.
-        type: string
-      description:
-        description: Description is the description of the advert.
-        type: string
-      id:
-        description: ID uniquely identifies the advert.
-        type: string
-      isdeleted:
-        description: isDeleted means is the advert deleted?.
-        type: boolean
-      location:
-        description: Location is the location of the object in advert.
-        type: string
-      phone:
-        description: Phone is the phone of the owner advert.
-        type: integer
-      price:
-        description: Price is the price of the object in advert.
-        type: number
-      userid:
-        description: UserId uniquely identifies who owns the advert.
-        type: string
-    type: object
-  models.AdvertCreateData:
-    properties:
-      buildingid:
-        description: BuildingId is the id of the building to which the advert belongs.
-        type: string
-      companyid:
-        description: CompanyId is the id of the company to which the advert belongs.
-        type: string
-      description:
-        description: Description is the description of the advert.
-        type: string
-      location:
-        description: Location is the location of the object in advert.
-        type: string
-      phone:
-        description: Phone is the phone of the owner advert.
-        type: integer
-      price:
-        description: Price is the price of the object in advert.
-        type: number
-      userid:
-        description: UserId uniquely identifies who owns the advert.
-        type: string
-    type: object
-  models.Building:
-    properties:
-      datacreation:
-        description: DataCreation is the time of adding a record to the database.
-        type: string
-      description:
-        description: Description is the description of the building.
-        type: string
-      id:
-        description: ID uniquely identifies the building.
-        type: string
-      isdeleted:
-        description: isDeleted means is the building deleted?.
-        type: boolean
-      location:
-        description: Location is the location of the building.
-        type: string
-    type: object
-  models.BuildingCreateData:
-    properties:
-      description:
-        description: Description is the description of the building.
-        type: string
-      location:
-        description: Location is the location of the building.
-        type: string
-    type: object
-  models.Company:
-    properties:
-      datacreation:
-        description: DataCreation is the time of adding a record to the database.
-        type: string
-      description:
-        description: Description is the description of the company.
-        type: string
-      id:
-        description: ID uniquely identifies the company.
-        type: string
-      isdeleted:
-        description: isDeleted means is the company deleted?.
-        type: boolean
-      name:
-        description: Name is the name of the company.
-        type: string
-      phone:
-        description: Phone is the phone of the company.
-        type: integer
-    type: object
-  models.CompanyCreateData:
-    properties:
-      description:
-        description: Descpription stands for company description
-        type: string
-      name:
-        description: Name stands for company name
-        type: string
-      phone:
-        description: Phone stands for company phone
-        type: integer
-    type: object
-  models.User:
-    properties:
-      id:
-        description: ID uniquely identifies the user.
-        type: string
-      login:
-        description: Login is the username of the user.
-        type: string
-    type: object
-  models.UserLoginData:
-    properties:
-      login:
-        description: Login stands for users nickname
-        type: string
-      password:
-        description: Password stands for users password
-        type: string
-    type: object
-host: 0.0.0.0:8080
-info:
-  contact: {}
-  description: This is a sample server Tean server.
-  title: Sample Project API
-  version: "1.0"
-paths:
-  /adverts/:
-    post:
-      consumes:
-      - application/json
-      description: Create a new advert
-      parameters:
-      - description: Advert data
-        in: body
-        name: input
-        required: true
-        schema:
-          $ref: '#/definitions/models.AdvertCreateData'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.Advert'
-        "400":
-          description: Incorrect data format
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Create a new advert
-      tags:
-      - adverts
-  /adverts/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete advert by ID
-      parameters:
-      - description: Advert ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: DELETED advert
-          schema:
-            type: string
-        "400":
-          description: Invalid ID parameter
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Delete advert by ID
-      tags:
-      - adverts
-    get:
-      consumes:
-      - application/json
-      description: Get advert by ID
-      parameters:
-      - description: Advert ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Advert'
-        "400":
-          description: Invalid ID parameter
-          schema:
-            type: string
-        "404":
-          description: Advert not found
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Get advert by ID
-      tags:
-      - adverts
-    post:
-      consumes:
-      - application/json
-      description: Update advert by ID
-      parameters:
-      - description: Advert ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Advert data
-        in: body
-        name: body
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: UPDATED advert
-          schema:
-            type: string
-        "400":
-          description: Invalid ID parameter or incorrect data format
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Update advert by ID
-      tags:
-      - adverts
-  /adverts/list/:
-    get:
-      consumes:
-      - application/json
-      description: Get list of adverts
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Advert'
-            type: array
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Get list of adverts
-      tags:
-      - adverts
-  /auth/login:
-    post:
-      consumes:
-      - application/json
-      description: User login
-      parameters:
-      - description: User login data
-        in: body
-        name: input
-        required: true
-        schema:
-          $ref: '#/definitions/models.UserLoginData'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.User'
-        "400":
-          description: Incorrect password or login
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: User login
-      tags:
-      - auth
-  /auth/logout:
-    get:
-      description: User logout
-      responses:
-        "200":
-          description: Logged out
-          schema:
-            type: string
-      summary: User logout
-      tags:
-      - auth
-  /auth/signup:
-    post:
-      consumes:
-      - application/json
-      description: Register a new user
-      parameters:
-      - description: User data
-        in: body
-        name: input
-        required: true
-        schema:
-          $ref: '#/definitions/models.UserLoginData'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.User'
-        "400":
-          description: Incorrect data format
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Register a new user
-      tags:
-      - auth
-  /buildings/:
-    post:
-      consumes:
-      - application/json
-      description: Create a new building
-      parameters:
-      - description: Building data
-        in: body
-        name: input
-        required: true
-        schema:
-          $ref: '#/definitions/models.BuildingCreateData'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.Building'
-        "400":
-          description: Incorrect data format
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Create a new building
-      tags:
-      - buildings
-  /buildings/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete building by ID
-      parameters:
-      - description: Building ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: DELETED building
-          schema:
-            type: string
-        "400":
-          description: Invalid ID parameter
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Delete building by ID
-      tags:
-      - buildings
-    get:
-      consumes:
-      - application/json
-      description: Get building by ID
-      parameters:
-      - description: Building ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Building'
-        "400":
-          description: Invalid ID parameter
-          schema:
-            type: string
-        "404":
-          description: Building not found
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Get building by ID
-      tags:
-      - buildings
-    post:
-      consumes:
-      - application/json
-      description: Update building by ID
-      parameters:
-      - description: Building ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Building data
-        in: body
-        name: body
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: UPDATED building
-          schema:
-            type: string
-        "400":
-          description: Invalid ID parameter or incorrect data format
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Update building by ID
-      tags:
-      - buildings
-  /buildings/list/:
-    get:
-      consumes:
-      - application/json
-      description: Get list of buildings
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Building'
-            type: array
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Get list of buildings
-      tags:
-      - buildings
-  /companies:
-    post:
-      consumes:
-      - application/json
-      description: Create a new company
-      parameters:
-      - description: Company data
-        in: body
-        name: input
-        required: true
-        schema:
-          $ref: '#/definitions/models.CompanyCreateData'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.Company'
-        "400":
-          description: Incorrect data format
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Create a new company
-      tags:
-      - companies
-  /companies/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete company by ID
-      parameters:
-      - description: Company ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: DELETED company
-          schema:
-            type: string
-        "400":
-          description: Invalid ID parameter
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Delete company by ID
-      tags:
-      - companies
-    get:
-      consumes:
-      - application/json
-      description: Get company by ID
-      parameters:
-      - description: Company ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Company'
-        "400":
-          description: Invalid ID parameter
-          schema:
-            type: string
-        "404":
-          description: Company not found
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Get company by ID
-      tags:
-      - companies
-    post:
-      consumes:
-      - application/json
-      description: Update company by ID
-      parameters:
-      - description: Company ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Company data
-        in: body
-        name: body
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: UPDATED company
-          schema:
-            type: string
-        "400":
-          description: Invalid ID parameter or incorrect data format
-          schema:
-            type: string
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Update company by ID
-      tags:
-      - companies
-  /companies/list/:
-    get:
-      consumes:
-      - application/json
-      description: Get list of companies
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Company'
-            type: array
-        "500":
-          description: Internal server error
-          schema:
-            type: string
-      summary: Get list of companies
-      tags:
-      - companies
 schemes:
-- http
-- https
-swagger: "2.0"
+  - http
+  - https
+swagger: '2.0'
+info:
+  description: This is an Ouzi server.
+  title: Ouzi Project API
+  contact: {}
+  version: '1.0'
+host: localhost:8080
+basePath: /api
+paths:
+  /word/page/{page}:
+    get:
+      description: Get Word Text.
+      produces:
+        - application/json
+      tags:
+        - word
+      summary: Get page of words text
+      parameters:
+        - name: page
+          in: path
+          required: true
+          type: integer
+          format: int32
+          minimum: 1
+          description: Page number (starting from 1)
+        - name: page_size
+          in: query
+          required: false
+          type: integer
+          format: int32
+          minimum: 10
+          maximum: 100
+          default: 30
+          description: Number of items per page
+      responses:
+        '200':
+          description: Successful operation
+          schema:
+            $ref: '#/definitions/models.WordPage'
+          examples:
+            application/json:
+        '400':
+          description: Bad request
+          schema:
+            type: string
+          examples:
+            application/json: "Page number must be positive integer"
+        '404':
+          description: Page not found
+          schema:
+            type: string
+          examples:
+            application/json: "Requested page not found"
+        '500':
+          description: Internal server error
+          schema:
+            type: string
+          examples:
+            application/json: "Internal server error"
+
+
+
+  /word/{word}:
+    get:
+      description: Get Word Transcription, Audi
+      produces:
+        - application/json
+      tags:
+        - word
+      summary: Get Word Transcription and Audio
+      parameters:
+        - name: word
+          in: path
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Successful operation
+          schema:
+            $ref: '#/definitions/models.WordInfo'
+          examples:
+            application/json:
+              word: "hello"
+              transcription: "həˈləʊ"
+        '400':
+          description: Incorrect word format
+          schema:
+            type: string
+            example: "Invalid word format"
+        '500':
+          description: Internal server error
+          schema:
+            type: string
+            example: "Internal server error occurred"
+
+  /word/create_word:
+    post:
+      description: Create new word entry with text and transcription without audio.
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      tags:
+        - dataset
+      summary: Create word
+      parameters:
+        - in: body
+          name: body
+          description: Word data
+          required: true
+          schema:
+            $ref: '#/definitions/models.WordInfo'
+      responses:
+        '201':
+          description: Created
+          schema:
+            type: string
+          examples:
+            application/json:
+              "Word created"
+        '400':
+          description: Incorrect word format
+          schema:
+            type: string
+            example: "Invalid word format"
+        '401':
+          description: Unauthorized
+          schema:
+            type: string
+          examples:
+            application/json:
+              "Authentication required"
+        '403':
+          description: Forbidden
+          schema:
+            type: string
+          examples:
+            application/json:
+              "No permission"
+        '409':
+          description: Conflict
+          schema:
+            type: string
+          examples:
+            application/json:
+              "Word already exists"
+        '500':
+          description: Internal server error
+          schema:
+            type: string
+            example: "Internal server error occurred"
+
+
+
+  /audio/translate_audio:
+    post:
+      description: Get text transcription from audio file
+      consumes:
+        - multipart/form-data
+      produces:
+        - application/json
+      tags:
+        - audio
+      summary: Transcribe audio to text
+      parameters:
+        - name: file
+          in: formData
+          type: file
+          description: Audio file to transcribe (max 5mb wav, mp3)
+          required: true
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/models.GotWord'
+          examples:
+            application/json:
+              transcription: "həˈləʊ"
+        '400':
+          description: Incorrect data format
+          schema:
+            type: string
+          examples:
+            application/json: "Invalid audio format"
+        '413':
+          description: Payload too large
+          schema:
+            type: string
+          examples:
+            application/json: "File exceeds size limit"
+        '415':
+          description: Unsupported media type
+          schema:
+            type: string
+          examples:
+            application/json: "Unsupported media type"
+        '422':
+          description: Unprocessable content
+          schema:
+            type: string
+          examples:
+            application/json: "No recognizable speech in audio"
+        '500':
+          description: Internal server error
+          schema:
+            type: string
+          examples:
+            application/json: "Internal server error occurred"
+
+
+
+
+  /word/pronunciation/{word}:
+    post:
+      description: download audio of word
+      produces:
+        - application/json
+      tags:
+        - dataset
+      summary: Post pronunciation of a word to s3
+      parameters:
+        - name: word
+          in: path
+          required: true
+          type: string
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WordInfo'
+        '400':
+          description: Incorrect data format
+          schema:
+            type: string
+        '500':
+          description: Internal server error
+          schema:
+            type: string
+    get:
+      description: Get pronunciation of audio
+      produces:
+        - application/json
+      tags:
+        - audio
+      summary: Get pronunciation of a word
+      parameters:
+        - name: word
+          in: path
+          required: true
+          type: string
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WordInfo'
+        '400':
+          description: Incorrect data format
+          schema:
+            type: string
+        '500':
+          description: Internal server error
+          schema:
+            type: string
+
+
+
+  /stat/{word}:
+    post:
+      description: Record statistics about word practice attempt
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      tags:
+        - stat
+      summary: Record word practice statistics
+      parameters:
+        - name: word
+          in: path
+          required: true
+          type: string
+          minLength: 2
+          maxLength: 50
+          description: Practiced word (letters and hyphens only, 2-50 chars)
+        - in: body
+          name: stats
+          required: true
+          description: Practice statistics data
+          schema:
+            $ref: '#/definitions/models.WordPracticeStats'
+      responses:
+        '200':
+          description: Statistics successfully recorded
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+              recorded_at:
+                type: string
+                format: date-time
+          examples:
+            application/json:
+              success: true
+              recorded_at: "2023-11-15T14:30:45Z"
+        '400':
+          description: Invalid input data
+          schema:
+            type: string
+          examples:
+            application/json:
+              "Invalid statistics data"
+        '404':
+          description: Word not found
+          schema:
+            type: string
+          examples:
+            application/json:
+              "Word not found in dictionary"
+        '500':
+          description: Internal server error
+          schema:
+            type: string
+          examples:
+            application/json:
+              "Failed to save statistics"
+
+    get:
+      description: Get practice statistics for specific word
+      produces:
+        - application/json
+      tags:
+        - stat
+      summary: Get word practice statistics
+      parameters:
+        - name: word
+          in: path
+          required: true
+          type: string
+          description: Word to get stats for (letters and hyphens only, 2-50 chars)
+      responses:
+        '200':
+          description: Successful operation
+          schema:
+            $ref: '#/definitions/models.WordStatsResponse'
+          examples:
+            application/json:
+              word: "hello"
+              total_attempts: 42
+              correct_attempts: 35
+              accuracy: 0.83
+              last_practiced: "2023-11-15T14:30:45Z"
+              attempts:
+                - date: "2023-11-15"
+                  correct: true
+                - date: "2023-11-14"
+                  correct: false
+        '404':
+          description: Word not found or no statistics available
+          schema:
+            type: string
+          examples:
+            application/json:
+              "No statistics available for this word"
+        '500':
+          description: Internal server error
+          schema:
+            type: string
+          examples:
+            application/json:
+              "Internal server error"
+
+definitions:
+  models.WordInfo:
+    type: object
+    properties:
+      word:
+        description: Word contains info about word.
+        type: string
+        example: "hello"
+      transcription:
+        description: Transcription of given word.
+        type: string
+        example: "həˈləʊ"
+    example:
+      word: "hello"
+      transcription: "həˈləʊ"
+  models.WordPage:
+    type: array
+    items:
+      type: object
+      properties:
+        word1:
+          type: string
+          description: First word in page
+          example: "hello"
+        word2:
+          type: string
+          description: Second word in page
+          example: "world"
+        word3:
+          type: string
+          description: Third word in page
+          example: "swagger"
+      additionalProperties: false
+    example:
+      - word1: "apple"
+        word2: "banana"
+        word3: "cherry"
+
+  models.GotWord:
+    type: object
+    properties:
+      transcription:
+        description: Got translation from ML service.
+
+
+
+
+
+
+  models.WordPracticeStats:
+    type: object
+    properties:
+      correct:
+        type: boolean
+        description: Whether the attempt was successful
+      duration_sec:
+        type: number
+        format: float
+        minimum: 0.1
+        maximum: 60.0
+        description: Time spent on attempt in seconds
+      mode:
+        type: string
+        enum: ["listening", "speaking", "writing"]
+        description: Practice mode
+    required:
+      - correct
+      - duration_sec
+
+  models.WordStatsResponse:
+    type: object
+    properties:
+      word:
+        type: string
+        description: The word being queried
+      total_attempts:
+        type: integer
+        description: Total number of practice attempts
+      correct_attempts:
+        type: integer
+        description: Number of correct attempts
+      accuracy:
+        type: number
+        format: float
+        minimum: 0
+        maximum: 1
+        description: Correct attempts ratio (0-1)
+      last_practiced:
+        type: string
+        format: date-time
+        description: Last practice timestamp
+      attempts:
+        type: array
+        items:
+          $ref: '#/definitions/models.PracticeAttempt'
+
+  models.PracticeAttempt:
+    type: object
+    properties:
+      date:
+        type: string
+        format: date
+      correct:
+        type: boolean
+      duration_sec:
+        type: number
+        format: float
+
+
