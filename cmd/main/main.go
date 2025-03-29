@@ -21,27 +21,26 @@ import (
 )
 
 func main() {
+	_ = godotenv.Load()
 	cfg := config.MustLoad()
 	logr := logger.NewSlogStdOutLogger()
-	logr.LogDebug("STARTED SLOG STDOUT")
-	//logr := logger.NewSlogLogger("log.txt")
+	logr.LogDebug("started slog")
+	//logr := logger.NewSlogLogger("log.txt") TODO если хотим записывать в файл
 
-	_ = godotenv.Load()
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
-	r.Use(middleware.CORSMiddleware, middleware.AccessLogMiddleware)
+	r.Use(middleware.CORSMiddleware, middleware.RequestIDMiddleware, middleware.AccessLogMiddleware)
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)
 
 	aUc := audioUc.NewAudioUsecase()
 	auHandler := audioHl.NewAudioHandler(aUc, cfg, logr)
+	audio := r.PathPrefix("/audio").Subrouter()
+	audio.Handle("/save_audio", http.HandlerFunc(auHandler.SaveAudio)).Methods(http.MethodPost, http.MethodOptions)
+	audio.Handle("/translate_audio", http.HandlerFunc(auHandler.TranslateAudio)).Methods(http.MethodPost, http.MethodOptions)
 
 	wUc := wordUc.NewAudioUsecase()
 	wHandler := wordH.NewWordHandler(wUc, cfg, logr)
 	word := r.PathPrefix("/word").Subrouter()
 	word.Handle("/get_word/{word}", http.HandlerFunc(wHandler.GetWord)).Methods(http.MethodGet)
-
-	audio := r.PathPrefix("/audio").Subrouter()
-	audio.Handle("/save_audio", http.HandlerFunc(auHandler.SaveAudio)).Methods(http.MethodPost, http.MethodOptions)
-	audio.Handle("/translate_audio", http.HandlerFunc(auHandler.TranslateAudio)).Methods(http.MethodPost, http.MethodOptions)
 
 	srv := &http.Server{
 		Addr:              ":8080",
@@ -57,18 +56,21 @@ func main() {
 	go func() {
 		fmt.Printf("Start server on %s\n", srv.Addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			fmt.Printf("listen: %s\n", err)
+			str := fmt.Sprintf("listen: %s\n", err)
+			logr.LogDebug(str)
 		}
 	}()
 
 	sig := <-signalCh
-	fmt.Printf("Received signal: %v\n", sig)
+	str := fmt.Sprintf("Received signal: %v\n", sig)
+	logr.LogDebug(str)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		fmt.Printf("Server shutdown failed: %s\n", err)
+		str := fmt.Sprintf("Server shutdown failed: %s\n", err)
+		logr.LogDebug(str)
 	}
 }
 

@@ -16,6 +16,17 @@ type Config struct {
 	MinioService    MinioS3
 }
 
+/*
+type Database struct {
+	DBName string `env:"POSTGRES_DB" env-required:"true"`
+	DBPass string `env:"POSTGRES_PASSWORD" env-required:"true"`
+	DBHost string `env:"DB_HOST" env-default:"0.0.0.0"`
+	DBPort int    `env:"DB_PORT" env-required:"true"`
+	DBUser string `env:"POSTGRES_USER" env-required:"true"`
+}
+
+*/
+
 type MinioS3 struct {
 	MinioEndpoint     string `env:"MINIO_ENDPOINT" env-default:"host.docker.internal:9000"`
 	BucketName        string `env:"MINIO_BUCKET_NAME" env-default:"defaultbucket"`
