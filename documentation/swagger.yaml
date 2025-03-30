@@ -65,7 +65,7 @@ paths:
 
   /word/{word}:
     get:
-      description: Get Word Transcription, Audi
+      description: Get Word Transcription, Audio
       produces:
         - application/json
       tags:
@@ -85,6 +85,7 @@ paths:
             application/json:
               word: "hello"
               transcription: "həˈləʊ"
+              link: "http://host.docker.internal:9000/defaultbucket/18fawd?X-Amz-Algorithm=AWS4-HMAC-SHA256uawd0e=36683a82c04513bfe728d2393c552a70910a63d2f521319017f65d74c5c2b27e"
         '400':
           description: Incorrect word format
           schema:
@@ -211,11 +212,11 @@ paths:
             application/json: "Internal server error occurred"
 
 
-
-
   /word/pronunciation/{word}:
     post:
-      description: download audio of word
+      description: post audio of word
+      consumes:
+        - multipart/form-data
       produces:
         - application/json
       tags:
@@ -226,36 +227,21 @@ paths:
           in: path
           required: true
           type: string
-      responses:
-        '200':
-          description: OK
-          schema:
-            $ref: '#/definitions/models.WordInfo'
-        '400':
-          description: Incorrect data format
-          schema:
-            type: string
-        '500':
-          description: Internal server error
-          schema:
-            type: string
-    get:
-      description: Get pronunciation of audio
-      produces:
-        - application/json
-      tags:
-        - audio
-      summary: Get pronunciation of a word
-      parameters:
-        - name: word
-          in: path
+        - name: file
+          in: formData
+          type: file
+          description: Audio file (max 5mb wav, mp3)
           required: true
-          type: string
       responses:
         '200':
           description: OK
           schema:
             $ref: '#/definitions/models.WordInfo'
+          examples:
+            application/json:
+              word: "hello"
+              transcription: "həˈləʊ"
+              link: "http://host.docker.internal:9000/defaultbucket/18fawd?X-Amz-Algorithm=AWS4-HMAC-SHA256\u0026X-Amz-Credent\u0026X-Amz-Signature=36683a82c04513bfe728d2393c552a70910a63d2f521319017f65d74c5c2b27e"
         '400':
           description: Incorrect data format
           schema:
@@ -264,6 +250,31 @@ paths:
           description: Internal server error
           schema:
             type: string
+    #get:
+    #  description: Get pronunciation of audio
+    #  produces:
+    #    - application/json
+    #  tags:
+    #    - audio
+    #  summary: Get pronunciation of a word
+    #  parameters:
+    #    - name: word
+    #      in: path
+    #      required: true
+    #      type: string
+    #  responses:
+    #    '200':
+    #      description: OK
+    #      schema:
+    #        $ref: '#/definitions/models.WordInfo'
+    #    '400':
+    #      description: Incorrect data format
+    #      schema:
+    #        type: string
+    #    '500':
+    #      description: Internal server error
+    #      schema:
+    #        type: string
 
 
 
@@ -372,7 +383,72 @@ paths:
           examples:
             application/json:
               "Internal server error"
-
+  /files/get/{uuid}:
+    get:
+      description: Get link from minio by uuid
+      produces:
+        - application/json
+      tags:
+        - files
+      summary: Get link from minio by uuid
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          type: string
+          description: uuid of file
+      responses:
+        '200':
+          description: Successful get
+          schema:
+            type: string
+          examples:
+            application/json:
+              "http://host.docker.internal:9000/defaultbucket/18fawd?X-Amz-Algorithm=AWS4-HMAC-SHA256\u0026X-Amz-Crehost\u0026X-Amz-Signature=36683a82c04513bfe728d2393c552a70910a63d2f521319017f65d74c5c2b27e"
+  /files/create:
+    post:
+      description: create file minioclient and give it uuid
+      consumes:
+        - multipart/form-data
+      produces:
+        - application/json
+      tags:
+        - files
+      summary: create file in minio
+      parameters:
+        - name: file
+          in: formData
+          type: file
+          description: Audio file to save (max 5mb wav, mp3)
+          required: true
+      responses:
+        '200':
+          description: Successful create
+          examples:
+            application/json:
+              "http://host.docker.internal:9000/defaultbucket/ec3d0b04-e8d5-4d03-afd4-37997f68a8b3?X-Amz-Algorithes=86400\u0026X-Amz-SignedHeaders=host\u0026X-Amz-Signature=51a9ff55413feb6d2f1301dea376f419d7728ad71e2b3480b32d213a74ee7370"
+  /files/delete/{uuid}:
+    delete:
+      description: Delete from minio by uuid
+      produces:
+        - application/json
+      tags:
+        - files
+      summary: Delete from minio by uuid
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          type: string
+          description: uuid of files
+      responses:
+        '200':
+          description: Successful delete
+          schema:
+            type: string
+          examples:
+            application/json:
+              "file deleted successfully"
 definitions:
   models.WordInfo:
     type: object
@@ -385,6 +461,10 @@ definitions:
         description: Transcription of given word.
         type: string
         example: "həˈləʊ"
+      link:
+        description: link to audio in minio.
+        type: string
+        example: "http://host.docker.internal:9000/defaultbucket/18fawd?X-Amz-Algorithm=AWS4-HMAC-SHA256\u0026X-Amz-Credential=minioadmin%2F20250329%2Fus-east-1%2Fs3%2Faws4_request\u0026X-Amz-Date=26X-Amz-Signature=36683a82c04513bfe728d2393c552a70910a63d2f521319017f65d74c5c2b27e"
     example:
       word: "hello"
       transcription: "həˈləʊ"
