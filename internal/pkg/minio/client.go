@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/config"
+	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/minio/helpers"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
@@ -22,12 +23,13 @@ type MinClient interface {
 
 // minClient реализация интерфейса MinioClient
 type minClient struct {
-	mc   *minio.Client // Клиент Minio
-	conf *config.Config
+	mc     *minio.Client // Клиент Minio
+	conf   *config.Config
+	logger logger.Logger
 }
 
-func NewMinioClient(conf *config.Config) MinClient {
-	return &minClient{conf: conf} // Возвращает новый экземпляр minioClient с указанным именем бакета
+func NewMinioClient(conf *config.Config, logr logger.Logger) MinClient {
+	return &minClient{conf: conf, logger: logr} // Возвращает новый экземпляр minioClient с указанным именем бакета
 }
 
 // InitMinio подключается к Minio и создает бакет, если не существует
@@ -38,7 +40,9 @@ func (m *minClient) InitMinio() error {
 		Creds:  credentials.NewStaticV4(m.conf.MinioService.MinioRootUser, m.conf.MinioService.MinioRootPassword, ""),
 		Secure: m.conf.MinioService.MinioUseSSL,
 	})
+	m.logger.LogDebug("connected to minio")
 	if err != nil {
+		m.logger.LogDebug(err.Error())
 		return err
 	}
 
@@ -47,14 +51,19 @@ func (m *minClient) InitMinio() error {
 	// Проверка бакета и его создание, если не существует
 	exists, err := m.mc.BucketExists(ctx, m.conf.MinioService.BucketName)
 	if err != nil {
+		m.logger.LogDebug(err.Error())
 		return err
 	}
 	if !exists {
+
 		err := m.mc.MakeBucket(ctx, m.conf.MinioService.BucketName, minio.MakeBucketOptions{})
 		if err != nil {
+			m.logger.LogDebug(err.Error())
 			return err
 		}
+		m.logger.LogDebug("created bucket")
 	}
+	m.logger.LogDebug("minio client init success")
 
 	return nil
 }
@@ -69,14 +78,16 @@ func (m *minClient) CreateOne(file helpers.FileDataType) (string, error) {
 
 	_, err := m.mc.PutObject(context.Background(), m.conf.MinioService.BucketName, objectID, reader, int64(len(file.Data)), minio.PutObjectOptions{})
 	if err != nil {
-		return "", fmt.Errorf("ошибка при создании объекта %s: %v", file.FileName, err)
+		m.logger.LogDebug(err.Error())
+		return "", fmt.Errorf("failed to create object %s: %v", file.FileName, err)
 	}
 
 	url, err := m.mc.PresignedGetObject(context.Background(), m.conf.MinioService.BucketName, objectID, time.Second*24*60*60, nil)
 	if err != nil {
-		return "", fmt.Errorf("ошибка при создании URL для объекта %s: %v", file.FileName, err)
+		m.logger.LogDebug(err.Error())
+		return "", fmt.Errorf("fail create url for object %s: %v", file.FileName, err)
 	}
-
+	m.logger.LogDebug("created file with url: " + url.String())
 	return url.String(), nil
 }
 
@@ -84,8 +95,10 @@ func (m *minClient) CreateOne(file helpers.FileDataType) (string, error) {
 func (m *minClient) GetOne(objectID string) (string, error) {
 	url, err := m.mc.PresignedGetObject(context.Background(), m.conf.MinioService.BucketName, objectID, time.Second*24*60*60, nil)
 	if err != nil {
-		return "", fmt.Errorf("ошибка при получении URL для объекта %s: %v", objectID, err)
+		m.logger.LogDebug(err.Error())
+		return "", fmt.Errorf("fail to get url for object %s: %v", objectID, err)
 	}
+	m.logger.LogDebug("got url for object")
 
 	return url.String(), nil
 }
@@ -94,7 +107,9 @@ func (m *minClient) GetOne(objectID string) (string, error) {
 func (m *minClient) DeleteOne(objectID string) error {
 	err := m.mc.RemoveObject(context.Background(), m.conf.MinioService.BucketName, objectID, minio.RemoveObjectOptions{})
 	if err != nil {
-		return err // Возвращаем ошибку, если не удалось удалить объект.
+		m.logger.LogDebug(err.Error())
+		return err
 	}
+	m.logger.LogDebug("deleted object")
 	return nil
 }

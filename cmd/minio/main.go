@@ -31,7 +31,7 @@ func main() {
 	r.Use(middleware.CORSMiddleware, middleware.AccessLogMiddleware)
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)
 
-	minClient := minioS.NewMinioClient(cfg)
+	minClient := minioS.NewMinioClient(cfg, logr)
 	err := minClient.InitMinio()
 	if err != nil {
 		logr.LogDebug(err.Error())
