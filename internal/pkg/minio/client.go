@@ -81,8 +81,10 @@ func (m *minClient) InitMinio() error {
 	// Проверка бакета и его создание, если не существует
 	exists, err := m.mc.BucketExists(ctx, m.conf.MinioService.BucketName)
 	if err != nil {
-		m.logger.LogDebug(err.Error())
-		return err
+		if err.Error() != "The specified bucket does not exist." {
+			m.logger.LogDebug(err.Error())
+			return err // TODO: if not exists error continue
+		}
 	}
 	if !exists {
 

@@ -24,6 +24,7 @@ services:
   main:
     depends_on:
     - db
+    - minio
     container_name: mainService
     build:
       context: ./
