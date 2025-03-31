@@ -54,6 +54,7 @@ func (h *WordHandler) GetWord(w http.ResponseWriter, r *http.Request) {
 	gotWord, err := h.uc.GetWord(r.Context(), wordU)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, "error get word")
+		return
 	}
 
 	fileStorageClient := utils.NewFileStorageClient("http://localhost:8080")

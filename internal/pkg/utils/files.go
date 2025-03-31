@@ -59,8 +59,15 @@ func (c *FileStorageClient) UploadFile(file io.Reader, filename string) (string,
 	if err != nil {
 		return "", fmt.Errorf("failed to read response body: %w", err)
 	}
+	data := struct {
+		StatusCode int    `json:"statusCode"`
+		Payload    string `json:"payload"`
+	}{}
+	if err := json.Unmarshal(respBody, &data); err != nil {
+		return "", err
+	}
 
-	return string(respBody), nil
+	return data.Payload, nil
 }
 
 func (c *FileStorageClient) GetFileLink(fileUUID string) (string, error) {
@@ -79,18 +86,19 @@ func (c *FileStorageClient) GetFileLink(fileUUID string) (string, error) {
 		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	// Ожидаем JSON вида {"url": "https://s3.../file.mp3"}
-	var result struct {
-		URL string `json:"payload"`
+	data := struct {
+		StatusCode int    `json:"statusCode"`
+		Payload    string `json:"payload"`
+	}{}
+	respBody, err := io.ReadAll(resp.Body)
+
+	if err := json.Unmarshal(respBody, &data); err != nil {
+		return "", err
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	if result.URL == "" {
+	if data.Payload == "" {
 		return "", fmt.Errorf("empty url in response")
 	}
 
-	return result.URL, nil
+	return data.Payload, nil
 }
