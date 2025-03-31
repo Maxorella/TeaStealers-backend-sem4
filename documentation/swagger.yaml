@@ -310,13 +310,9 @@ paths:
             properties:
               success:
                 type: boolean
-              recorded_at:
-                type: string
-                format: date-time
           examples:
             application/json:
               success: true
-              recorded_at: "2023-11-15T14:30:45Z"
         '400':
           description: Invalid input data
           schema:
@@ -362,13 +358,7 @@ paths:
               word: "hello"
               total_attempts: 42
               correct_attempts: 35
-              accuracy: 0.83
-              last_practiced: "2023-11-15T14:30:45Z"
-              attempts:
-                - date: "2023-11-15"
-                  correct: true
-                - date: "2023-11-14"
-                  correct: false
+              accuracy: 83
         '404':
           description: Word not found or no statistics available
           schema:
@@ -508,16 +498,6 @@ definitions:
       correct:
         type: boolean
         description: Whether the attempt was successful
-      duration_sec:
-        type: number
-        format: float
-        minimum: 0.1
-        maximum: 60.0
-        description: Time spent on attempt in seconds
-      mode:
-        type: string
-        enum: ["listening", "speaking", "writing"]
-        description: Practice mode
     required:
       - correct
       - duration_sec
