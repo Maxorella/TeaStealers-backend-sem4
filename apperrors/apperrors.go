@@ -26,3 +26,8 @@ var (
 var (
 	ErrInternalServer = errors.New("internal server error")
 )
+
+// Ошибки в usecase
+var (
+	ErrCreateWOrd = errors.New("failed to create word")
+)

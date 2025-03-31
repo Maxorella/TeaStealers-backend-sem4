@@ -1,11 +1,13 @@
 package delivery
 
 import (
+	"context"
 	"errors"
+	"github.com/TeaStealers-backend-sem4/internal/models"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/config"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/utils"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/words"
+	"github.com/TeaStealers-backend-sem4/internal/pkg/word"
 	"github.com/gorilla/mux"
 	"github.com/satori/uuid"
 	"io"
@@ -21,13 +23,13 @@ const (
 
 type WordHandler struct {
 	// uc represents the usecase interface for authentication.
-	uc     words.WordUsecase
+	uc     word.WordUsecase
 	cfg    *config.Config
 	logger logger.Logger
 }
 
 // NewAuthHandler creates a new instance of AuthHandler.
-func NewWordHandler(uc words.WordUsecase, cfg *config.Config, logr logger.Logger) *WordHandler {
+func NewWordHandler(uc word.WordUsecase, cfg *config.Config, logr logger.Logger) *WordHandler {
 	return &WordHandler{uc: uc, cfg: cfg, logger: logr}
 
 }
@@ -75,5 +77,37 @@ func (h *WordHandler) GetWord(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetWord")
+
+}
+
+func (h *WordHandler) CreateWordHandler(w http.ResponseWriter, r *http.Request) {
+	requestId, ok := r.Context().Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+		// ctx = context.WithValue(r.Context(), "requestId", requestId)
+	}
+
+	data := models.CreateWordData{}
+
+	if err := utils.ReadRequestData(r, &data); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordHandler", err, http.StatusBadRequest)
+		utils.WriteError(w, http.StatusBadRequest, "incorrect data format")
+		return
+	}
+
+	_, err := h.uc.CreateWord(context.Background(), &data)
+	if err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordHandler", err, http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "error create word")
+		return
+	}
+
+	if err := utils.WriteResponse(w, http.StatusCreated, "Word created"); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordHandler", err, http.StatusInternalServerError)
+		utils.WriteError(w, http.StatusInternalServerError, "Internal server error occurred")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "CreateWordHandler")
 
 }

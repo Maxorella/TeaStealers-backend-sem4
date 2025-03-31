@@ -17,7 +17,7 @@ paths:
         - application/json
       tags:
         - word
-      summary: Get page of words text
+      summary: Get page of word text
       parameters:
         - name: page
           in: path

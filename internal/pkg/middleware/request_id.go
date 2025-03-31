@@ -14,9 +14,9 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 		if !ok {
 			requestID := uuid.New().String()
 			ctx := context.WithValue(r.Context(), utils.REQUEST_ID_KEY, requestID)
-
 			next.ServeHTTP(w, r.WithContext(ctx))
+		} else {
+			next.ServeHTTP(w, r)
 		}
-		next.ServeHTTP(w, r)
 	})
 }

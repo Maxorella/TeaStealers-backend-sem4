@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	audioHl "github.com/TeaStealers-backend-sem4/internal/pkg/audio/delivery"
@@ -9,10 +10,13 @@ import (
 	"github.com/TeaStealers-backend-sem4/internal/pkg/config"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/middleware"
-	wordH "github.com/TeaStealers-backend-sem4/internal/pkg/words/delivery"
-	wordUc "github.com/TeaStealers-backend-sem4/internal/pkg/words/usecase"
+	wordH "github.com/TeaStealers-backend-sem4/internal/pkg/word/delivery"
+	wordRep "github.com/TeaStealers-backend-sem4/internal/pkg/word/repo"
+	wordUc "github.com/TeaStealers-backend-sem4/internal/pkg/word/usecase"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -27,6 +31,22 @@ func main() {
 	logr.LogDebug("started slog")
 	//logr := logger.NewSlogLogger("log.txt") TODO если хотим записывать в файл
 
+	db, err := sql.Open("postgres", fmt.Sprintf("postgres://%v:%v@%v:%v/%v?sslmode=disable",
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASS"),
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_NAME")))
+	if err != nil {
+		panic("failed to connect database" + err.Error())
+	}
+
+	if err = db.Ping(); err != nil {
+		log.Println("fail ping postgres")
+		err = fmt.Errorf("error happened in db.Ping: %w", err)
+		log.Println(err)
+	}
+
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
 	r.Use(middleware.CORSMiddleware, middleware.RequestIDMiddleware, middleware.AccessLogMiddleware)
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)
@@ -37,10 +57,12 @@ func main() {
 	audio.Handle("/save_audio", http.HandlerFunc(auHandler.SaveAudio)).Methods(http.MethodPost, http.MethodOptions)
 	audio.Handle("/translate_audio", http.HandlerFunc(auHandler.TranslateAudio)).Methods(http.MethodPost, http.MethodOptions)
 
-	wUc := wordUc.NewAudioUsecase()
+	wRepo := wordRep.NewRepository(db, logr)
+	wUc := wordUc.NewWordUsecase(wRepo, logr)
 	wHandler := wordH.NewWordHandler(wUc, cfg, logr)
 	word := r.PathPrefix("/word").Subrouter()
 	word.Handle("/get_word/{word}", http.HandlerFunc(wHandler.GetWord)).Methods(http.MethodGet)
+	word.Handle("/create_word", http.HandlerFunc(wHandler.CreateWordHandler)).Methods(http.MethodPost)
 
 	srv := &http.Server{
 		Addr:              ":8080",
