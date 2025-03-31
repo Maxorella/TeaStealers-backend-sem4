@@ -32,6 +32,36 @@ func NewMinioClient(conf *config.Config, logr logger.Logger) MinClient {
 	return &minClient{conf: conf, logger: logr} // Возвращает новый экземпляр minioClient с указанным именем бакета
 }
 
+func (m *minClient) SetBucketPolicy() error {
+	policy := `{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": [
+                    "*"
+                ]
+            },
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::defaultbucket",
+                "arn:aws:s3:::defaultbucket/*"
+            ]
+        }
+    ]
+}`
+
+	err := m.mc.SetBucketPolicy(context.Background(), m.conf.MinioService.BucketName, policy)
+	if err != nil {
+		return fmt.Errorf("failed to set bucket policy: %v", err)
+	}
+	return nil
+}
+
 // InitMinio подключается к Minio и создает бакет, если не существует
 func (m *minClient) InitMinio() error {
 	ctx := context.Background()
@@ -64,8 +94,8 @@ func (m *minClient) InitMinio() error {
 		m.logger.LogDebug("created bucket")
 	}
 	m.logger.LogDebug("minio client init success")
-
-	return nil
+	err = m.SetBucketPolicy()
+	return err
 }
 
 // CreateOne создает один объект в бакете Minio.
