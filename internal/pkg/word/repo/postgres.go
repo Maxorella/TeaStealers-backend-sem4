@@ -82,7 +82,7 @@ func (r *WordRepo) UploadLink(ctx context.Context, wordLink *models.WordData) er
 
 	r.logger.LogInfo(requestId, logger.RepositoryLayer, "UploadLink", "got word from base: "+wordBase.Word)
 
-	if _, err := r.db.Exec(UploadLinkSql, wordLink.Link); err != nil {
+	if _, err := r.db.Exec(UploadLinkSql, wordLink.Link, wordLink.Word); err != nil {
 		r.logger.LogError(requestId, logger.RepositoryLayer, "UploadLink", err)
 		return err
 	}

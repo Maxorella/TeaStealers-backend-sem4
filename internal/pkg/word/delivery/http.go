@@ -152,7 +152,7 @@ func (h *WordHandler) UploadAudioHandler(w http.ResponseWriter, r *http.Request)
 
 	h.logger.LogInfo(requestId, logger.DeliveryLayer, "UploadAudioHandler", "got file")
 
-	fileStorageClient := utils.NewFileStorageClient("http://host.docker.internal:8081")
+	fileStorageClient := utils.NewFileStorageClient("http://localhost:8080")
 	audioLink, err := fileStorageClient.UploadFile(file, head.Filename)
 	if err != nil {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadAudioHandler", err)

@@ -10,6 +10,8 @@ import (
 	"github.com/TeaStealers-backend-sem4/internal/pkg/config"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
 	"github.com/TeaStealers-backend-sem4/internal/pkg/middleware"
+	minioS "github.com/TeaStealers-backend-sem4/internal/pkg/minio"
+	minioH "github.com/TeaStealers-backend-sem4/internal/pkg/minio/delivery"
 	wordH "github.com/TeaStealers-backend-sem4/internal/pkg/word/delivery"
 	wordRep "github.com/TeaStealers-backend-sem4/internal/pkg/word/repo"
 	wordUc "github.com/TeaStealers-backend-sem4/internal/pkg/word/usecase"
@@ -50,6 +52,16 @@ func main() {
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
 	r.Use(middleware.CORSMiddleware, middleware.RequestIDMiddleware, middleware.AccessLogMiddleware)
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)
+
+	minClient := minioS.NewMinioClient(cfg, logr)
+	err = minClient.InitMinio()
+	if err != nil {
+		logr.LogDebug(err.Error())
+		os.Exit(-1)
+	}
+
+	minH := minioH.NewMinioHandler(minClient, cfg, logr)
+	minH.RegisterRoutes(r)
 
 	aUc := audioUc.NewAudioUsecase()
 	auHandler := audioHl.NewAudioHandler(aUc, cfg, logr)
