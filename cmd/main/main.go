@@ -73,7 +73,7 @@ func main() {
 	wUc := wordUc.NewWordUsecase(wRepo, logr)
 	wHandler := wordH.NewWordHandler(wUc, cfg, logr)
 	word := r.PathPrefix("/word").Subrouter()
-	word.Handle("/get_word/{word}", http.HandlerFunc(wHandler.GetWord)).Methods(http.MethodGet)
+	word.Handle("/{word}", http.HandlerFunc(wHandler.GetWord)).Methods(http.MethodGet)
 	word.Handle("/create_word", http.HandlerFunc(wHandler.CreateWordHandler)).Methods(http.MethodPost)
 	word.Handle("/pronunciation/{word}", http.HandlerFunc(wHandler.UploadAudioHandler)).Methods(http.MethodPost)
 

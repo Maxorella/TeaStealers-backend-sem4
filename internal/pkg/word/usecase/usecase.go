@@ -21,11 +21,6 @@ func NewWordUsecase(repo *repo.WordRepo, logger logger.Logger) *WordUsecase {
 	}
 }
 
-// SignUp handles the user registration process.
-func (uc *WordUsecase) GetWord() string {
-	return ""
-}
-
 func (uc *WordUsecase) CreateWord(ctx context.Context, wordCreateData *models.CreateWordData) (int, error) {
 	requestId, ok := ctx.Value("requestId").(string)
 	if !ok {
@@ -59,4 +54,22 @@ func (uc *WordUsecase) UploadLink(ctx context.Context, wordLink *models.WordData
 	}
 	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", "uploaded uuid to word")
 	return nil
+}
+
+func (uc *WordUsecase) GetWord(ctx context.Context, wordData *models.WordData) (*models.WordData, error) {
+	requestId, ok := ctx.Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+		ctx = context.WithValue(ctx, "requestId", requestId)
+		uc.logger.LogInfo(requestId, logger.UsecaseLayer, "GetWord", "new reqId")
+	}
+
+	gotWord, err := uc.repo.GetWord(ctx, wordData)
+
+	if err != nil {
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "GetWord", err)
+		return gotWord, errors.New("failed to get word")
+	}
+	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "GetWord", "uploaded uuid to word")
+	return gotWord, nil
 }

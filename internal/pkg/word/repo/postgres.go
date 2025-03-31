@@ -90,3 +90,28 @@ func (r *WordRepo) UploadLink(ctx context.Context, wordLink *models.WordData) er
 	r.logger.LogInfo(requestId, logger.RepositoryLayer, "UploadLink", "return word id")
 	return nil
 }
+
+func (r *WordRepo) GetWord(ctx context.Context, wordName *models.WordData) (*models.WordData, error) {
+	requestId, ok := ctx.Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+		ctx = context.WithValue(ctx, "requestId", requestId)
+		r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetWord", "new reqId")
+	}
+
+	res := r.db.QueryRow(SelectWordSql, wordName.Word)
+
+	wordBase := &models.WordData{}
+	var Link sql.NullString
+	if err := res.Scan(&wordBase.WordID, &wordBase.Word, &wordBase.Transcription, &Link); err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetWord", err)
+		return &models.WordData{}, err
+	}
+
+	if Link.Valid {
+		wordBase.Link = Link.String
+	}
+
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetWord", "got word from base: "+wordBase.Word)
+	return wordBase, nil
+}
