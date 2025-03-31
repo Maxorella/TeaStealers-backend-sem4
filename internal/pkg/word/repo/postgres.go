@@ -58,3 +58,35 @@ func (r *WordRepo) CreateWord(ctx context.Context, wordCreate *models.CreateWord
 	r.logger.LogInfo(requestId, logger.RepositoryLayer, "CreateWord", "return word id")
 	return lastInsertID, nil
 }
+
+func (r *WordRepo) UploadLink(ctx context.Context, wordLink *models.WordData) error {
+	requestId, ok := ctx.Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+		ctx = context.WithValue(ctx, "requestId", requestId)
+		r.logger.LogInfo(requestId, logger.RepositoryLayer, "UploadLink", "new reqId")
+	}
+
+	res := r.db.QueryRow(SelectWordSql, wordLink.Word)
+
+	wordBase := &models.WordData{}
+	var Link sql.NullString
+	if err := res.Scan(&wordBase.WordID, &wordBase.Word, &wordBase.Transcription, &Link); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			r.logger.LogError(requestId, logger.RepositoryLayer, "UploadLink", err)
+			return err
+		}
+	}
+
+	//if Link.Valid { } TODO сейчас будем перезаписывать ссылку, мб нужно будет поменять логику
+
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "UploadLink", "got word from base: "+wordBase.Word)
+
+	if _, err := r.db.Exec(UploadLinkSql, wordLink.Link); err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "UploadLink", err)
+		return err
+	}
+
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "UploadLink", "return word id")
+	return nil
+}

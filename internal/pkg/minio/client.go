@@ -88,7 +88,7 @@ func (m *minClient) CreateOne(file helpers.FileDataType) (string, error) {
 		return "", fmt.Errorf("fail create url for object %s: %v", file.FileName, err)
 	}
 	m.logger.LogDebug("created file with url: " + url.String())
-	return url.String(), nil
+	return objectID, nil
 }
 
 // GetOne получает предварительный url на один объект из бакета Minio по его идентификатору.
