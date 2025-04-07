@@ -15,12 +15,14 @@ func (wd *CreateWordData) Sanitize() {
 type WordData struct {
 	WordID        int    `json:"word_id"`
 	Word          string `json:"word"`
+	Tags          string `json:"tags"`
 	Transcription string `json:"transcription"`
 	Link          string `json:"link"`
 }
 
 func (wd *WordData) Sanitize() {
 	wd.Word = html.EscapeString(wd.Word)
+	wd.Tags = html.EscapeString(wd.Tags)
 	wd.Transcription = html.EscapeString(wd.Transcription)
 	wd.Link = html.EscapeString(wd.Link)
 }

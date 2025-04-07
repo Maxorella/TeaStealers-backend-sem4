@@ -12,9 +12,9 @@ DROP TABLE IF EXISTS word_etalon;
 CREATE TABLE IF NOT EXISTS word_etalon (
     word_id INT NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     word VARCHAR(255) NOT NULL,
-    transcription TEXT, -- мб null, а потом добавлять??
-    audio_link TEXT, -- мб null, а потом добавлять??
-    -- pronouncation VARCHAR(255)
+    transcription TEXT,
+    audio_id TEXT,
+    tags TEXT,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE
 );
 
@@ -23,19 +23,17 @@ DROP TABLE IF EXISTS word_tip;
 CREATE TABLE IF NOT EXISTS word_tip(
     tip_id INT NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     -- word_id INT, не нужна привязка к слову, подсказки общие
-    phonema TEXT NOT NULL, -- мб получится varchar сделать
+    phonema TEXT NOT NULL,
     tip TEXT NOT NULL
 );
 
--- REFERENCES advert(id)
--- PRIMARY KEY (user_id, advert_id)
 DROP TABLE IF EXISTS word_user_try;
 
 CREATE TABLE IF NOT EXISTS word_user_try(
     try_id INT NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    word_id INT REFERENCES word_etalon(word_id) ON DELETE CASCADE, -- каскад опасно, но пока так
-    got_transcription TEXT NOT NULL, -- сейчас тут будет слово распознанное, в перспективе транскрипция
-    got_result BOOLEAN NOT NULL -- true - без ошибок, false - допущена ошибка
+    word_id INT REFERENCES word_etalon(word_id) ON DELETE CASCADE,
+    got_transcription TEXT NOT NULL,
+    result BOOLEAN NOT NULL
     );
 
 DROP TABLE IF EXISTS user_word_summary;

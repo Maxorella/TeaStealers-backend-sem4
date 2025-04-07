@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/config"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/middleware"
-	minioS "github.com/TeaStealers-backend-sem4/internal/pkg/minio"
-	minioH "github.com/TeaStealers-backend-sem4/internal/pkg/minio/delivery"
+	"github.com/TeaStealers-backend-sem4/pkg/config"
+	"github.com/TeaStealers-backend-sem4/pkg/logger"
+	middleware2 "github.com/TeaStealers-backend-sem4/pkg/middleware"
+	minioS "github.com/TeaStealers-backend-sem4/pkg/minio"
+	minioH "github.com/TeaStealers-backend-sem4/pkg/minio/delivery"
 	"github.com/joho/godotenv"
 
 	"github.com/gorilla/mux"
@@ -28,7 +28,7 @@ func main() {
 	logr.LogDebug("Started minio client logger")
 
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
-	r.Use(middleware.CORSMiddleware, middleware.AccessLogMiddleware)
+	r.Use(middleware2.CORSMiddleware, middleware2.AccessLogMiddleware)
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)
 
 	minClient := minioS.NewMinioClient(cfg, logr)

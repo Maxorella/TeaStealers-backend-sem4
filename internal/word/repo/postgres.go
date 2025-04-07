@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/TeaStealers-backend-sem4/internal/models"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
+	"github.com/TeaStealers-backend-sem4/pkg/logger"
 	"github.com/satori/uuid"
 )
 
@@ -113,5 +113,58 @@ func (r *WordRepo) GetWord(ctx context.Context, wordName *models.WordData) (*mod
 	}
 
 	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetWord", "got word from base: "+wordBase.Word)
+	return wordBase, nil
+}
+
+func (r *WordRepo) GetRandomWord(ctx context.Context) (*models.WordData, error) {
+	requestId, ok := ctx.Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+		ctx = context.WithValue(ctx, "requestId", requestId)
+		r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetRandomWord", "new reqId")
+	}
+
+	res := r.db.QueryRow(SelectRandomWordSql)
+
+	wordBase := &models.WordData{}
+	var Link, Tags sql.NullString
+	if err := res.Scan(&wordBase.Word, &wordBase.Transcription, &Tags, &Link); err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetRandomWord", err)
+		return &models.WordData{}, err
+	}
+
+	if Link.Valid {
+		wordBase.Link = Link.String
+	}
+	if Tags.Valid {
+		wordBase.Tags = Tags.String
+	}
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetRandomWord", "got word from base: "+wordBase.Word)
+	return wordBase, nil
+}
+
+func (r *WordRepo) GetRandomWordWithTag(ctx context.Context, wordTag string) (*models.WordData, error) {
+	requestId, ok := ctx.Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+		ctx = context.WithValue(ctx, "requestId", requestId)
+		r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetRandomWord", "new reqId")
+	}
+	res := r.db.QueryRow(SelectRandomWordWithTagSql, wordTag)
+
+	wordBase := &models.WordData{}
+	var Link, Tags sql.NullString
+	if err := res.Scan(&wordBase.Word, &wordBase.Transcription, &Tags, &Link); err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetRandomWord", err)
+		return &models.WordData{}, err
+	}
+
+	if Link.Valid {
+		wordBase.Link = Link.String
+	}
+	if Tags.Valid {
+		wordBase.Tags = Tags.String
+	}
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetRandomWord", "got word from base: "+wordBase.Word)
 	return wordBase, nil
 }

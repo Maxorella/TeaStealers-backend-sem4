@@ -5,16 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	audioHl "github.com/TeaStealers-backend-sem4/internal/pkg/audio/delivery"
-	audioUc "github.com/TeaStealers-backend-sem4/internal/pkg/audio/usecase"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/config"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/middleware"
-	minioS "github.com/TeaStealers-backend-sem4/internal/pkg/minio"
-	minioH "github.com/TeaStealers-backend-sem4/internal/pkg/minio/delivery"
-	wordH "github.com/TeaStealers-backend-sem4/internal/pkg/word/delivery"
-	wordRep "github.com/TeaStealers-backend-sem4/internal/pkg/word/repo"
-	wordUc "github.com/TeaStealers-backend-sem4/internal/pkg/word/usecase"
+	audioHl "github.com/TeaStealers-backend-sem4/internal/audio/delivery"
+	audioUc "github.com/TeaStealers-backend-sem4/internal/audio/usecase"
+	wordH "github.com/TeaStealers-backend-sem4/internal/word/delivery"
+	wordRep "github.com/TeaStealers-backend-sem4/internal/word/repo"
+	wordUc "github.com/TeaStealers-backend-sem4/internal/word/usecase"
+	"github.com/TeaStealers-backend-sem4/pkg/config"
+	"github.com/TeaStealers-backend-sem4/pkg/logger"
+	middleware2 "github.com/TeaStealers-backend-sem4/pkg/middleware"
+	minioS "github.com/TeaStealers-backend-sem4/pkg/minio"
+	minioH "github.com/TeaStealers-backend-sem4/pkg/minio/delivery"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -50,7 +50,7 @@ func main() {
 	}
 
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
-	r.Use(middleware.CORSMiddleware, middleware.RequestIDMiddleware, middleware.AccessLogMiddleware)
+	r.Use(middleware2.CORSMiddleware, middleware2.RequestIDMiddleware, middleware2.AccessLogMiddleware)
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)
 
 	minClient := minioS.NewMinioClient(cfg, logr)
@@ -73,6 +73,7 @@ func main() {
 	wUc := wordUc.NewWordUsecase(wRepo, logr)
 	wHandler := wordH.NewWordHandler(wUc, cfg, logr)
 	word := r.PathPrefix("/word").Subrouter()
+	word.Handle("/rand_word", http.HandlerFunc(wHandler.GetRandomWord)).Methods(http.MethodGet)
 	word.Handle("/{word}", http.HandlerFunc(wHandler.GetWord)).Methods(http.MethodGet)
 	word.Handle("/create_word", http.HandlerFunc(wHandler.CreateWordHandler)).Methods(http.MethodPost)
 	word.Handle("/pronunciation/{word}", http.HandlerFunc(wHandler.UploadAudioHandler)).Methods(http.MethodPost)

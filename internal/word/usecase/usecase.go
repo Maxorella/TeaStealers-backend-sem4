@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"github.com/TeaStealers-backend-sem4/internal/models"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/word/repo"
+	"github.com/TeaStealers-backend-sem4/internal/word/repo"
+	"github.com/TeaStealers-backend-sem4/pkg/logger"
 	"github.com/satori/uuid"
 )
 
@@ -70,6 +70,30 @@ func (uc *WordUsecase) GetWord(ctx context.Context, wordData *models.WordData) (
 		uc.logger.LogError(requestId, logger.UsecaseLayer, "GetWord", err)
 		return gotWord, errors.New("failed to get word")
 	}
-	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "GetWord", "uploaded uuid to word")
+	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "GetWord", "got word")
+	return gotWord, nil
+}
+
+func (uc *WordUsecase) GetRandomWord(ctx context.Context, wordTag string) (*models.WordData, error) {
+	requestId, ok := ctx.Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+		ctx = context.WithValue(ctx, "requestId", requestId)
+		uc.logger.LogInfo(requestId, logger.UsecaseLayer, "GetRandomWord", "new reqId")
+	}
+	var gotWord *models.WordData
+	var err error
+	if wordTag == "" {
+		gotWord, err = uc.repo.GetRandomWord(ctx)
+	} else {
+		gotWord, err = uc.repo.GetRandomWordWithTag(ctx, wordTag)
+
+	}
+	if err != nil {
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "GetRandomWord", err)
+		return gotWord, errors.New("failed to get word")
+	}
+
+	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "GetRandomWord", "got word")
 	return gotWord, nil
 }

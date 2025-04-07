@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"context"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/utils"
+	"github.com/TeaStealers-backend-sem4/pkg/utils"
 	"net/http"
 
 	"github.com/google/uuid"

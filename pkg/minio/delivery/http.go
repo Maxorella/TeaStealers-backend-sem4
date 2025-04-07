@@ -1,12 +1,12 @@
 package delivery
 
 import (
-	"github.com/TeaStealers-backend-sem4/apperrors"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/config"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/logger"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/minio"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/minio/helpers"
-	"github.com/TeaStealers-backend-sem4/internal/pkg/utils"
+	"github.com/TeaStealers-backend-sem4/internal/apperrors"
+	"github.com/TeaStealers-backend-sem4/pkg/config"
+	"github.com/TeaStealers-backend-sem4/pkg/logger"
+	"github.com/TeaStealers-backend-sem4/pkg/minio"
+	"github.com/TeaStealers-backend-sem4/pkg/minio/helpers"
+	"github.com/TeaStealers-backend-sem4/pkg/utils"
 	"github.com/gorilla/mux"
 	"github.com/satori/uuid"
 	"io"
