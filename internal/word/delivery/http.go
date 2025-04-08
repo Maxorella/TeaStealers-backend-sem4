@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/TeaStealers-backend-sem4/internal/models"
 	"github.com/TeaStealers-backend-sem4/internal/word"
 	"github.com/TeaStealers-backend-sem4/pkg/config"
@@ -13,6 +14,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -174,7 +176,7 @@ func (h *WordHandler) GetRandomWord(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-	tag := vars["tag"]
+	tag := vars["tags"]
 
 	gotWord, err := h.uc.GetRandomWord(r.Context(), tag)
 	if err != nil {
@@ -198,5 +200,115 @@ func (h *WordHandler) GetRandomWord(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetRandomWord")
+
+}
+
+func (h *WordHandler) SelectTags(w http.ResponseWriter, r *http.Request) {
+	requestId, ok := r.Context().Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+	}
+
+	gotTags, err := h.uc.SelectTags(r.Context())
+	if err != nil {
+		utils2.WriteError(w, http.StatusInternalServerError, "error get tags")
+		return
+	}
+
+	if err := utils2.WriteResponse(w, http.StatusOK, gotTags); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "SelectTags", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "SelectTags")
+
+}
+
+func (h *WordHandler) SelectWordsWithTag(w http.ResponseWriter, r *http.Request) {
+	requestId, ok := r.Context().Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+	}
+
+	tag := models.OneTag{}
+
+	if err := utils2.ReadRequestData(r, &tag); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordHandler", err, http.StatusBadRequest)
+		utils2.WriteError(w, http.StatusBadRequest, "incorrect data format")
+		return
+	}
+	fmt.Printf("got tag %s", tag.Tag)
+	gotWords, err := h.uc.SelectWordsWithTag(r.Context(), tag.Tag)
+	if err != nil {
+		utils2.WriteError(w, http.StatusInternalServerError, "error get tags")
+		return
+	}
+
+	if err := utils2.WriteResponse(w, http.StatusOK, *gotWords); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "SelectWordsWithTag", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "SelectWordsWithTag")
+
+}
+
+func (h *WordHandler) WriteStat(w http.ResponseWriter, r *http.Request) {
+	requestId, ok := r.Context().Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+	}
+
+	stat := models.WordStat{}
+
+	if err := utils2.ReadRequestData(r, &stat); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WriteStat", err, http.StatusBadRequest)
+		utils2.WriteError(w, http.StatusBadRequest, "incorrect data format")
+		return
+	}
+	err := h.uc.WriteStat(r.Context(), &stat)
+	if err != nil {
+		utils2.WriteError(w, http.StatusInternalServerError, "error get tags")
+		return
+	}
+
+	if err := utils2.WriteResponse(w, http.StatusOK, ""); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WriteStat", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "WriteStat")
+
+}
+
+func (h *WordHandler) GetStat(w http.ResponseWriter, r *http.Request) {
+	requestId, ok := r.Context().Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+	}
+
+	vars := mux.Vars(r)
+	word_id_St := vars["word_id"]
+	word_id, err := strconv.Atoi(word_id_St)
+	if err != nil {
+		utils2.WriteError(w, http.StatusBadRequest, "bad word_id")
+		return
+	}
+	stat, err := h.uc.GetStat(r.Context(), word_id)
+	if err != nil {
+		utils2.WriteError(w, http.StatusInternalServerError, "error get word")
+		return
+	}
+	stat.Id = word_id
+	if err := utils2.WriteResponse(w, http.StatusOK, stat); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WriteStat", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "WriteStat")
 
 }

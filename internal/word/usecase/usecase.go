@@ -3,10 +3,12 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/TeaStealers-backend-sem4/internal/models"
 	"github.com/TeaStealers-backend-sem4/internal/word/repo"
 	"github.com/TeaStealers-backend-sem4/pkg/logger"
 	"github.com/satori/uuid"
+	"strings"
 )
 
 type WordUsecase struct {
@@ -34,7 +36,29 @@ func (uc *WordUsecase) CreateWord(ctx context.Context, wordCreateData *models.Cr
 		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateWord", err)
 		return -1, errors.New("failed to create word")
 	}
-	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", "created new word uc")
+
+	// Обрабатываем теги, если они есть
+	if wordCreateData.Tags != "" {
+		tags := strings.Split(wordCreateData.Tags, ",")
+		for _, tag := range tags {
+			tag = strings.TrimSpace(tag)
+			if tag == "" {
+				continue
+			}
+
+			// Вставляем тег (игнорируем конфликты)
+			err := uc.repo.InsertTag(ctx, tag)
+
+			if err != nil {
+				uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateWord",
+					fmt.Errorf("failed to insert tag '%s': %v", tag, err))
+				continue
+			}
+		}
+	}
+
+	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord",
+		fmt.Sprintf("created new word uc, id: %d", word_id))
 	return word_id, nil
 }
 
@@ -96,4 +120,24 @@ func (uc *WordUsecase) GetRandomWord(ctx context.Context, wordTag string) (*mode
 
 	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "GetRandomWord", "got word")
 	return gotWord, nil
+}
+
+func (uc *WordUsecase) SelectTags(ctx context.Context) (*models.TagsList, error) {
+	gottags, err := uc.repo.SelectTags(ctx)
+	return gottags, err
+}
+
+func (uc *WordUsecase) SelectWordsWithTag(ctx context.Context, tag string) (*[]models.WordData, error) {
+	gotwords, err := uc.repo.SelectWordsWithTag(ctx, tag)
+	return gotwords, err
+}
+
+func (uc *WordUsecase) WriteStat(ctx context.Context, stat *models.WordStat) error {
+	err := uc.repo.WriteStat(ctx, stat)
+	return err
+}
+
+func (uc *WordUsecase) GetStat(ctx context.Context, word_id int) (*models.WordStat, error) {
+	stat, err := uc.repo.GetStat(ctx, word_id)
+	return stat, err
 }

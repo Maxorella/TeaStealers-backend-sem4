@@ -5,11 +5,25 @@ import "html"
 type CreateWordData struct {
 	Word          string `json:"word"`
 	Transcription string `json:"transcription"`
+	Tags          string `json:"tags"`
 }
 
 func (wd *CreateWordData) Sanitize() {
 	wd.Word = html.EscapeString(wd.Word)
 	wd.Transcription = html.EscapeString(wd.Transcription)
+}
+
+type TagsList struct {
+	Tags []string `json:"tags"`
+}
+type OneTag struct {
+	Tag string `json:"tag"`
+}
+
+type WordStat struct {
+	Id         int `json:"id"`
+	TotalPlus  int `json:"plus"`
+	TotalMinus int `json:"minus"`
 }
 
 type WordData struct {

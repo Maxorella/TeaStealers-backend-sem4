@@ -10,4 +10,8 @@ type WordUsecase interface {
 	CreateWord(ctx context.Context, wordCreateData *models.CreateWordData) (int, error)
 	UploadLink(ctx context.Context, wordLink *models.WordData) error
 	GetRandomWord(ctx context.Context, wordTag string) (*models.WordData, error)
+	SelectTags(ctx context.Context) (*models.TagsList, error)
+	SelectWordsWithTag(ctx context.Context, tag string) (*[]models.WordData, error)
+	WriteStat(ctx context.Context, stat *models.WordStat) error
+	GetStat(ctx context.Context, word_id int) (*models.WordStat, error)
 }

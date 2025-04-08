@@ -17,6 +17,11 @@ CREATE TABLE IF NOT EXISTS word_etalon (
     tags TEXT,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE
 );
+DROP TABLE IF EXISTS word_tag;
+CREATE TABLE IF NOT EXISTS word_tag(
+    tag_id INT NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tag TEXT NOT NULL UNIQUE
+);
 
 DROP TABLE IF EXISTS word_tip;
 
@@ -32,17 +37,17 @@ DROP TABLE IF EXISTS word_user_try;
 CREATE TABLE IF NOT EXISTS word_user_try(
     try_id INT NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     word_id INT REFERENCES word_etalon(word_id) ON DELETE CASCADE,
-    got_transcription TEXT NOT NULL,
+    -- got_transcription TEXT NOT NULL,
     result BOOLEAN NOT NULL
     );
 
 DROP TABLE IF EXISTS user_word_summary;
 
 CREATE TABLE IF NOT EXISTS user_word_summary(
-    user_id INT NOT NULL REFERENCES user_acc(user_id),
+    -- user_id INT NOT NULL REFERENCES user_acc(user_id),
     word_id INT REFERENCES word_etalon(word_id),
     total_plus INT NOT NULL, -- кол-во правильных произношений
     total_minus INT NOT NULL, -- кол-во неправильных произношений
-    PRIMARY KEY (user_id, word_id)
+    PRIMARY KEY (word_id)
 );
 
