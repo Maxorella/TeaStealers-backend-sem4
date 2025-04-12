@@ -141,3 +141,13 @@ func (uc *WordUsecase) GetStat(ctx context.Context, word_id int) (*models.WordSt
 	stat, err := uc.repo.GetStat(ctx, word_id)
 	return stat, err
 }
+
+func (uc *WordUsecase) UploadTip(ctx context.Context, data *models.TipData) error {
+	err := uc.repo.UploadTip(ctx, data)
+	return err
+}
+
+func (uc *WordUsecase) GetTip(ctx context.Context, data *models.TipData) (*models.TipData, error) {
+	gotTip, err := uc.repo.GetTip(ctx, data)
+	return gotTip, err
+}

@@ -73,6 +73,7 @@ func main() {
 	wUc := wordUc.NewWordUsecase(wRepo, logr)
 	wHandler := wordH.NewWordHandler(wUc, cfg, logr)
 	word := r.PathPrefix("/word").Subrouter()
+	tip := r.PathPrefix("/tip").Subrouter()
 	word.Handle("/rand_word", http.HandlerFunc(wHandler.GetRandomWord)).Methods(http.MethodGet)
 	word.Handle("/get_tags", http.HandlerFunc(wHandler.SelectTags)).Methods(http.MethodGet)
 	word.Handle("/stat/write_stat", http.HandlerFunc(wHandler.WriteStat)).Methods(http.MethodPost)
@@ -81,7 +82,8 @@ func main() {
 	word.Handle("/{word}", http.HandlerFunc(wHandler.GetWord)).Methods(http.MethodGet)
 	word.Handle("/create_word", http.HandlerFunc(wHandler.CreateWordHandler)).Methods(http.MethodPost)
 	word.Handle("/pronunciation/{word}", http.HandlerFunc(wHandler.UploadAudioHandler)).Methods(http.MethodPost)
-
+	tip.Handle("/upload_tip", http.HandlerFunc(wHandler.UploadTip)).Methods(http.MethodPost)
+	tip.Handle("/get_tip", http.HandlerFunc(wHandler.GetTip)).Methods(http.MethodGet)
 	srv := &http.Server{
 		Addr:              ":8080",
 		Handler:           r,

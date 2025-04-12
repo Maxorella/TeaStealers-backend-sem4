@@ -323,3 +323,42 @@ func (r *WordRepo) GetStat(ctx context.Context, word_id int) (*models.WordStat, 
 	r.logger.LogInfo(requestId, logger.RepositoryLayer, "WriteStat", "stat written successfully")
 	return wordstat, nil
 }
+
+func (r *WordRepo) UploadTip(ctx context.Context, data *models.TipData) error {
+	requestId, ok := ctx.Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+		ctx = context.WithValue(ctx, "requestId", requestId)
+		r.logger.LogInfo(requestId, logger.RepositoryLayer, "WriteStat", "new reqId")
+	}
+
+	_, err := r.db.ExecContext(ctx, CreateWordTip, data.Phonema, data.TipText, data.TipPicture, data.TipAudio)
+	if err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "UploadTip", err)
+		return err
+	}
+
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "UploadTip", "tip uploaded successfully")
+	return nil
+}
+
+func (r *WordRepo) GetTip(ctx context.Context, data *models.TipData) (*models.TipData, error) {
+	requestId, ok := ctx.Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+		ctx = context.WithValue(ctx, "requestId", requestId)
+		r.logger.LogInfo(requestId, logger.RepositoryLayer, "WriteStat", "new reqId")
+	}
+
+	res := r.db.QueryRow(SelectWordTip, data.Phonema)
+
+	gotTip := &models.TipData{}
+
+	if err := res.Scan(&gotTip.Phonema, &gotTip.TipText, &gotTip.TipPicture, &gotTip.TipAudio); err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetTip", err)
+		return gotTip, err
+	}
+
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetTip", "got tip successfully")
+	return gotTip, nil
+}

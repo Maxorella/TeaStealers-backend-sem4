@@ -15,4 +15,7 @@ const (
 	InsertPlusBigStat  = `INSERT INTO user_word_summary (word_id, total_plus, total_minus) VALUES ($1, 1, 0) ON CONFLICT (word_id) DO UPDATE SET total_plus = user_word_summary.total_plus + 1;`
 	InsertMinusBigStat = `INSERT INTO user_word_summary (word_id, total_plus, total_minus) VALUES ($1, 0, 1) ON CONFLICT (word_id)  DO UPDATE SET total_minus = user_word_summary.total_minus + 1;`
 	SelectBigStat      = `SELECT word_id, total_plus, total_minus FROM user_word_summary WHERE word_id=$1;`
+
+	CreateWordTip = `INSERT INTO word_tip (phonema, tip_text, tip_picture, tip_audio) VALUES ($1, $2,$3,$4);`
+	SelectWordTip = `SELECT phonema, tip_text, tip_picture, tip_audio from word_tip WHERE phonema = $1;`
 )

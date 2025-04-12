@@ -312,3 +312,131 @@ func (h *WordHandler) GetStat(w http.ResponseWriter, r *http.Request) {
 	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "WriteStat")
 
 }
+
+func (h *WordHandler) UploadTip(w http.ResponseWriter, r *http.Request) {
+	requestId, ok := r.Context().Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+		// ctx = context.WithValue(r.Context(), "requestId", requestId)
+	}
+
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		utils2.WriteError(w, http.StatusBadRequest, "max size file 5 mb")
+		return
+	}
+	h.logger.LogInfo(requestId, logger.DeliveryLayer, "UploadTip", "parsed multipart form")
+
+	audio_file, head_audio, err := r.FormFile("tip_audio")
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+	defer audio_file.Close()
+
+	picture_file, head_picture, err := r.FormFile("tip_picture")
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+	defer audio_file.Close()
+
+	allowedExtensions := []string{".wav", ".mp3"}
+	fileType := strings.ToLower(filepath.Ext(head_audio.Filename))
+	if !slices.Contains(allowedExtensions, fileType) {
+		utils2.WriteError(w, http.StatusBadRequest, "wav and mp3 only")
+		return
+	}
+	phonema := r.FormValue("phonema")
+	if phonema == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", errors.New("no sound"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+	}
+	tip := r.FormValue("tip")
+	if tip == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", errors.New("no tip"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+	}
+
+	fileStorageClient := utils2.NewFileStorageClient("http://localhost:8080")
+	tipAudioLink, err := fileStorageClient.UploadFile(audio_file, head_audio.Filename)
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
+		utils2.WriteError(w, http.StatusInternalServerError, "failed to upload file")
+		return
+	}
+
+	tipPicLink, err := fileStorageClient.UploadFile(picture_file, head_picture.Filename)
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
+		utils2.WriteError(w, http.StatusInternalServerError, "failed to upload file")
+		return
+	}
+	data := models.TipData{
+		Phonema:    phonema,
+		TipText:    tip,
+		TipPicture: tipPicLink,
+		TipAudio:   tipAudioLink,
+	}
+	data.Sanitize()
+
+	if err := h.uc.UploadTip(r.Context(), &data); err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
+		utils2.WriteError(w, http.StatusInternalServerError, "failed to upload tip")
+		return
+	}
+	if err := utils2.WriteResponse(w, http.StatusOK, "uploaded tip"); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "UploadTip", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
+		return
+	}
+}
+
+func (h *WordHandler) GetTip(w http.ResponseWriter, r *http.Request) {
+	requestId, ok := r.Context().Value("requestId").(string)
+	if !ok {
+		requestId = uuid.NewV4().String()
+	}
+
+	tip := models.TipData{}
+
+	if err := utils2.ReadRequestData(r, &tip); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetTip", err, http.StatusBadRequest)
+		utils2.WriteError(w, http.StatusBadRequest, "incorrect data format")
+		return
+	}
+	tip.Sanitize()
+	gotTip, err := h.uc.GetTip(r.Context(), &tip)
+	if err != nil {
+		utils2.WriteError(w, http.StatusInternalServerError, "error get tip")
+		return
+	}
+
+	fileStorageClient := utils2.NewFileStorageClient("http://localhost:8080")
+	audioLink, err := fileStorageClient.GetFileLink(gotTip.TipAudio)
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "GetTip", err)
+		utils2.WriteError(w, http.StatusInternalServerError, "failed to get link")
+		return
+	}
+
+	gotTip.TipAudio = audioLink
+
+	picLink, err := fileStorageClient.GetFileLink(gotTip.TipPicture)
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "GetTip", err)
+		utils2.WriteError(w, http.StatusInternalServerError, "failed to get link")
+		return
+	}
+
+	gotTip.TipPicture = picLink
+	if err := utils2.WriteResponse(w, http.StatusOK, gotTip); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetTip", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetTip")
+
+}

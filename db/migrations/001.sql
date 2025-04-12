@@ -26,10 +26,11 @@ CREATE TABLE IF NOT EXISTS word_tag(
 DROP TABLE IF EXISTS word_tip;
 
 CREATE TABLE IF NOT EXISTS word_tip(
-    tip_id INT NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     -- word_id INT, не нужна привязка к слову, подсказки общие
-    phonema TEXT NOT NULL,
-    tip TEXT NOT NULL
+    phonema TEXT PRIMARY KEY,
+    tip_text TEXT ,
+    tip_picture TEXT ,
+    tip_audio TEXT
 );
 
 DROP TABLE IF EXISTS word_user_try;

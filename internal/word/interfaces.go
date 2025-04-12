@@ -14,4 +14,6 @@ type WordUsecase interface {
 	SelectWordsWithTag(ctx context.Context, tag string) (*[]models.WordData, error)
 	WriteStat(ctx context.Context, stat *models.WordStat) error
 	GetStat(ctx context.Context, word_id int) (*models.WordStat, error)
+	UploadTip(context.Context, *models.TipData) error
+	GetTip(ctx context.Context, data *models.TipData) (*models.TipData, error)
 }

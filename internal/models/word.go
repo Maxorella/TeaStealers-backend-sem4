@@ -40,3 +40,18 @@ func (wd *WordData) Sanitize() {
 	wd.Transcription = html.EscapeString(wd.Transcription)
 	wd.Link = html.EscapeString(wd.Link)
 }
+
+type TipData struct {
+	TipID      int    `json:"tipID,omitempty"`
+	Phonema    string `json:"phonema"`
+	TipText    string `json:"tipText"`
+	TipPicture string `json:"tipPicture"`
+	TipAudio   string `json:"tipAudio"`
+}
+
+func (td *TipData) Sanitize() {
+	td.Phonema = html.EscapeString(td.Phonema)
+	td.TipText = html.EscapeString(td.TipText)
+	td.TipPicture = html.EscapeString(td.TipPicture)
+	td.TipAudio = html.EscapeString(td.TipAudio)
+}
