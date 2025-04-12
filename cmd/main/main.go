@@ -74,7 +74,7 @@ func main() {
 	wHandler := wordH.NewWordHandler(wUc, cfg, logr)
 	word := r.PathPrefix("/word").Subrouter()
 	tip := r.PathPrefix("/tip").Subrouter()
-	word.Handle("/rand_word", http.HandlerFunc(wHandler.GetRandomWord)).Methods(http.MethodGet)
+	word.Handle("/rand_word", http.HandlerFunc(wHandler.GetRandomWord)).Methods(http.MethodPost)
 	word.Handle("/get_tags", http.HandlerFunc(wHandler.SelectTags)).Methods(http.MethodGet)
 	word.Handle("/stat/write_stat", http.HandlerFunc(wHandler.WriteStat)).Methods(http.MethodPost)
 	word.Handle("/stat/get_stat/{word_id}", http.HandlerFunc(wHandler.GetStat)).Methods(http.MethodGet)
