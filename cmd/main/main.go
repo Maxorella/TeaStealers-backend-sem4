@@ -83,7 +83,7 @@ func main() {
 	word.Handle("/create_word", http.HandlerFunc(wHandler.CreateWordHandler)).Methods(http.MethodPost)
 	word.Handle("/pronunciation/{word}", http.HandlerFunc(wHandler.UploadAudioHandler)).Methods(http.MethodPost)
 	tip.Handle("/upload_tip", http.HandlerFunc(wHandler.UploadTip)).Methods(http.MethodPost)
-	tip.Handle("/get_tip", http.HandlerFunc(wHandler.GetTip)).Methods(http.MethodGet)
+	tip.Handle("/get_tip", http.HandlerFunc(wHandler.GetTip)).Methods(http.MethodPost)
 	srv := &http.Server{
 		Addr:              ":8080",
 		Handler:           r,
