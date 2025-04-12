@@ -129,7 +129,7 @@ func (r *WordRepo) GetRandomWord(ctx context.Context) (*models.WordData, error) 
 
 	wordBase := &models.WordData{}
 	var Link, Tags sql.NullString
-	if err := res.Scan(&wordBase.Word, &wordBase.Transcription, &Tags, &Link); err != nil {
+	if err := res.Scan(&wordBase.WordID, &wordBase.Word, &wordBase.Transcription, &Tags, &Link); err != nil {
 		r.logger.LogError(requestId, logger.RepositoryLayer, "GetRandomWord", err)
 		return &models.WordData{}, err
 	}
@@ -155,7 +155,7 @@ func (r *WordRepo) GetRandomWordWithTag(ctx context.Context, wordTag string) (*m
 
 	wordBase := &models.WordData{}
 	var Link, Tags sql.NullString
-	if err := res.Scan(&wordBase.Word, &wordBase.Transcription, &Tags, &Link); err != nil {
+	if err := res.Scan(&wordBase.WordID, &wordBase.Word, &wordBase.Transcription, &Tags, &Link); err != nil {
 		r.logger.LogError(requestId, logger.RepositoryLayer, "GetRandomWord", err)
 		return &models.WordData{}, err
 	}
