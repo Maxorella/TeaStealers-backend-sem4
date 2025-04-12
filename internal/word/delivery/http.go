@@ -175,10 +175,17 @@ func (h *WordHandler) GetRandomWord(w http.ResponseWriter, r *http.Request) {
 		requestId = uuid.NewV4().String()
 	}
 
-	vars := mux.Vars(r)
-	tag := vars["tags"]
+	type Tags struct {
+		Tag string `json:"tag"`
+	}
+	tag := Tags{}
+	if err := utils2.ReadRequestData(r, &tag); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordHandler", err, http.StatusBadRequest)
+		utils2.WriteError(w, http.StatusBadRequest, "incorrect data format")
+		return
+	}
 
-	gotWord, err := h.uc.GetRandomWord(r.Context(), tag)
+	gotWord, err := h.uc.GetRandomWord(r.Context(), tag.Tag)
 	if err != nil {
 		utils2.WriteError(w, http.StatusInternalServerError, "error get word")
 		return
