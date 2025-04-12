@@ -11,9 +11,6 @@ import (
 	"github.com/satori/uuid"
 	"io"
 	"net/http"
-	"path/filepath"
-	"slices"
-	"strings"
 )
 
 type Handler struct {
@@ -51,14 +48,6 @@ func (h *Handler) CreateOne(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer file.Close()
-
-	allowedExtensions := []string{".wav", ".mp3"}
-	fileType := strings.ToLower(filepath.Ext(head.Filename))
-	if !slices.Contains(allowedExtensions, fileType) {
-		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateOne", apperrors.ErrWavMp3Only, http.StatusBadRequest)
-		utils.WriteError(w, http.StatusBadRequest, apperrors.ErrWavMp3Only.Error())
-		return
-	}
 
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
