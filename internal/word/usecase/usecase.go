@@ -7,8 +7,8 @@ import (
 	"github.com/TeaStealers-backend-sem4/internal/models"
 	"github.com/TeaStealers-backend-sem4/internal/word/repo"
 	"github.com/TeaStealers-backend-sem4/pkg/logger"
+	utils2 "github.com/TeaStealers-backend-sem4/pkg/utils"
 	"github.com/satori/uuid"
-	"strings"
 )
 
 type WordUsecase struct {
@@ -24,42 +24,25 @@ func NewWordUsecase(repo *repo.WordRepo, logger logger.Logger) *WordUsecase {
 }
 
 func (uc *WordUsecase) CreateWord(ctx context.Context, wordCreateData *models.CreateWordData) (int, error) {
-	requestId, ok := ctx.Value("requestId").(string)
-	if !ok {
-		requestId = uuid.NewV4().String()
-		ctx = context.WithValue(ctx, "requestId", requestId)
-		uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", "new reqId")
-	}
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+	tx, err := uc.repo.BeginTx(ctx)
 
-	word_id, err := uc.repo.CreateWord(ctx, wordCreateData)
+	wordId, err := uc.repo.CreateWord(ctx, tx, wordCreateData)
 	if err != nil {
+		tx.Rollback()
 		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateWord", err)
-		return -1, errors.New("failed to create word")
+		return 0, errors.New("failed to create word")
 	}
 
-	// Обрабатываем теги, если они есть
-	if wordCreateData.Tags != "" {
-		tags := strings.Split(wordCreateData.Tags, ",")
-		for _, tag := range tags {
-			tag = strings.TrimSpace(tag)
-			if tag == "" {
-				continue
-			}
+	err = uc.repo.InsertTopic(ctx, tx, wordCreateData.Topic)
 
-			// Вставляем тег (игнорируем конфликты)
-			err := uc.repo.InsertTag(ctx, tag)
-
-			if err != nil {
-				uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateWord",
-					fmt.Errorf("failed to insert tag '%s': %v", tag, err))
-				continue
-			}
-		}
+	if err != nil {
+		tx.Rollback()
+		return 0, errors.New("failed to create topic")
 	}
-
-	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord",
-		fmt.Sprintf("created new word uc, id: %d", word_id))
-	return word_id, nil
+	tx.Commit()
+	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", fmt.Sprintf("created new word, id: %d", word_id))
+	return wordId, nil
 }
 
 func (uc *WordUsecase) UploadLink(ctx context.Context, wordLink *models.WordData) error {
@@ -127,8 +110,8 @@ func (uc *WordUsecase) SelectTags(ctx context.Context) (*models.TagsList, error)
 	return gottags, err
 }
 
-func (uc *WordUsecase) SelectWordsWithTag(ctx context.Context, tag string) (*[]models.WordData, error) {
-	gotwords, err := uc.repo.SelectWordsWithTag(ctx, tag)
+func (uc *WordUsecase) SelectWordsWithTopic(ctx context.Context, tag string) (*[]models.WordData, error) {
+	gotwords, err := uc.repo.SelectWordsWithTopic(ctx, tag)
 	return gotwords, err
 }
 

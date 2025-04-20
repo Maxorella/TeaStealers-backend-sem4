@@ -85,3 +85,16 @@ func ReadRequestData(r *http.Request, request interface{}) error {
 	}
 	return nil
 }
+
+func ReadResponseData(r *http.Response, request interface{}) error {
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	if err := json.Unmarshal(data, &request); err != nil {
+		return err
+	}
+	return nil
+}

@@ -3,7 +3,6 @@ package delivery
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/TeaStealers-backend-sem4/internal/models"
 	"github.com/TeaStealers-backend-sem4/internal/word"
 	"github.com/TeaStealers-backend-sem4/pkg/config"
@@ -14,7 +13,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -25,24 +23,22 @@ const (
 
 type WordHandler struct {
 	// uc represents the usecase interface for authentication.
-	uc     word.WordUsecase
-	cfg    *config.Config
-	logger logger.Logger
+	uc        word.WordUsecase
+	cfg       *config.Config
+	logger    logger.Logger
+	minClient *utils2.FileStorageClient
 }
 
 // NewAuthHandler creates a new instance of AuthHandler.
-func NewWordHandler(uc word.WordUsecase, cfg *config.Config, logr logger.Logger) *WordHandler {
-	return &WordHandler{uc: uc, cfg: cfg, logger: logr}
+func NewWordHandler(uc word.WordUsecase, cfg *config.Config, logr logger.Logger, minCl *utils2.FileStorageClient) *WordHandler {
+	return &WordHandler{uc: uc, cfg: cfg, logger: logr, minClient: minCl}
 
 }
 
 // audio.AudioUsecase GetTranscription
 
 func (h *WordHandler) GetWord(w http.ResponseWriter, r *http.Request) {
-	requestId, ok := r.Context().Value("requestId").(string)
-	if !ok {
-		requestId = uuid.NewV4().String()
-	}
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
 
 	vars := mux.Vars(r)
 	reqWord := vars["word"]
@@ -60,13 +56,13 @@ func (h *WordHandler) GetWord(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fileStorageClient := utils2.NewFileStorageClient("http://localhost:8080")
-	audioLink, err := fileStorageClient.GetFileLink(gotWord.Link)
+	audioLink, err := fileStorageClient.GetFileLink(gotWord.AudioLink)
 	if err != nil {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "GetWord", err)
 		utils2.WriteError(w, http.StatusInternalServerError, "failed to get link")
 		return
 	}
-	gotWord.Link = audioLink
+	gotWord.AudioLink = audioLink
 
 	if err := utils2.WriteResponse(w, http.StatusOK, gotWord); err != nil {
 		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetWord", err, http.StatusInternalServerError)
@@ -79,30 +75,67 @@ func (h *WordHandler) GetWord(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WordHandler) CreateWordHandler(w http.ResponseWriter, r *http.Request) {
-	requestId, ok := r.Context().Value("requestId").(string)
-	if !ok {
-		requestId = uuid.NewV4().String()
-		// ctx = context.WithValue(r.Context(), "requestId", requestId)
+
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
+
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordHandler", err)
+		utils2.WriteError(w, http.StatusBadRequest, "max size file 5 mb")
+		return
 	}
+	h.logger.LogInfo(requestId, logger.DeliveryLayer, "CreateWordHandler", "parsed multipart form")
 
-	data := models.CreateWordData{}
-
-	if err := utils2.ReadRequestData(r, &data); err != nil {
-		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordHandler", err, http.StatusBadRequest)
-		utils2.WriteError(w, http.StatusBadRequest, "incorrect data format")
+	audioFile, audioHead, err := r.FormFile("audio")
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordHandler", err)
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+	defer audioFile.Close()
+	allowedExtensions := []string{".wav", ".mp3"}
+	fileType := strings.ToLower(filepath.Ext(audioHead.Filename))
+	if !slices.Contains(allowedExtensions, fileType) {
+		utils2.WriteError(w, http.StatusBadRequest, "wav and mp3 only")
 		return
 	}
 
-	_, err := h.uc.CreateWord(context.Background(), &data)
+	formWord := r.FormValue("word")
+	if formWord == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordHandler", errors.New("no word"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+	}
+
+	formTranscription := r.FormValue("transcription")
+	if formTranscription == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordHandler", errors.New("no transcription"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+	}
+
+	formTopic := r.FormValue("topic")
+	if formTopic == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordHandler", errors.New("no topic"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+	}
+
+	audioLink, err := h.minClient.UploadFile(audioFile, audioHead.Filename)
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordHandler", err)
+		utils2.WriteError(w, http.StatusInternalServerError, "failed to upload file")
+		return
+	}
+
+	wordData := models.CreateWordData{Word: formWord, Transcription: formTranscription, Topic: formTopic, AudioLink: audioLink}
+
+	_, err = h.uc.CreateWord(context.Background(), &wordData)
 	if err != nil {
 		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordHandler", err, http.StatusInternalServerError)
 		utils2.WriteError(w, http.StatusInternalServerError, "error create word")
 		return
 	}
 
-	if err := utils2.WriteResponse(w, http.StatusCreated, "Word created"); err != nil {
+	if err := utils2.WriteResponse(w, http.StatusCreated, "word created"); err != nil {
 		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordHandler", err, http.StatusInternalServerError)
-		utils2.WriteError(w, http.StatusInternalServerError, "Internal server error occurred")
+		utils2.WriteError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -157,8 +190,8 @@ func (h *WordHandler) UploadAudioHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	data := models.WordData{
-		Word: wordVar,
-		Link: audioLink,
+		Word:      wordVar,
+		AudioLink: audioLink,
 	}
 	data.Sanitize()
 
@@ -192,13 +225,13 @@ func (h *WordHandler) GetRandomWord(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fileStorageClient := utils2.NewFileStorageClient("http://localhost:8080")
-	audioLink, err := fileStorageClient.GetFileLink(gotWord.Link)
+	audioLink, err := fileStorageClient.GetFileLink(gotWord.AudioLink)
 	if err != nil {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "GetRandomWord", err)
 		utils2.WriteError(w, http.StatusInternalServerError, "failed to get link")
 		return
 	}
-	gotWord.Link = audioLink
+	gotWord.AudioLink = audioLink
 
 	if err := utils2.WriteResponse(w, http.StatusOK, gotWord); err != nil {
 		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetRandomWord", err, http.StatusInternalServerError)
@@ -210,6 +243,7 @@ func (h *WordHandler) GetRandomWord(w http.ResponseWriter, r *http.Request) {
 
 }
 
+/*
 func (h *WordHandler) SelectTags(w http.ResponseWriter, r *http.Request) {
 	requestId, ok := r.Context().Value("requestId").(string)
 	if !ok {
@@ -231,44 +265,46 @@ func (h *WordHandler) SelectTags(w http.ResponseWriter, r *http.Request) {
 	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "SelectTags")
 
 }
-
-func (h *WordHandler) SelectWordsWithTag(w http.ResponseWriter, r *http.Request) {
+*/
+/*
+func (h *WordHandler) SelectWordsWithTopic(w http.ResponseWriter, r *http.Request) {
 	requestId, ok := r.Context().Value("requestId").(string)
 	if !ok {
 		requestId = uuid.NewV4().String()
 	}
 
-	tag := models.OneTag{}
+	tag := models.OneTopic{}
 
 	if err := utils2.ReadRequestData(r, &tag); err != nil {
 		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordHandler", err, http.StatusBadRequest)
 		utils2.WriteError(w, http.StatusBadRequest, "incorrect data format")
 		return
 	}
-	fmt.Printf("got tag %s", tag.Tag)
-	gotWords, err := h.uc.SelectWordsWithTag(r.Context(), tag.Tag)
+	fmt.Printf("got tag %s", tag.Topic)
+	gotWords, err := h.uc.SelectWordsWithTopic(r.Context(), tag.Topic)
 	if err != nil {
 		utils2.WriteError(w, http.StatusInternalServerError, "error get tags")
 		return
 	}
 
 	if err := utils2.WriteResponse(w, http.StatusOK, *gotWords); err != nil {
-		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "SelectWordsWithTag", err, http.StatusInternalServerError)
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "SelectWordsWithTopic", err, http.StatusInternalServerError)
 		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
 		return
 	}
 
-	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "SelectWordsWithTag")
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "SelectWordsWithTopic")
 
 }
-
+*/
+/*
 func (h *WordHandler) WriteStat(w http.ResponseWriter, r *http.Request) {
 	requestId, ok := r.Context().Value("requestId").(string)
 	if !ok {
 		requestId = uuid.NewV4().String()
 	}
 
-	stat := models.WordStat{}
+	stat := models.WordUserStat{}
 
 	if err := utils2.ReadRequestData(r, &stat); err != nil {
 		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WriteStat", err, http.StatusBadRequest)
@@ -291,6 +327,9 @@ func (h *WordHandler) WriteStat(w http.ResponseWriter, r *http.Request) {
 
 }
 
+*/
+
+/*
 func (h *WordHandler) GetStat(w http.ResponseWriter, r *http.Request) {
 	requestId, ok := r.Context().Value("requestId").(string)
 	if !ok {
@@ -320,6 +359,8 @@ func (h *WordHandler) GetStat(w http.ResponseWriter, r *http.Request) {
 
 }
 
+*/
+/*
 func (h *WordHandler) UploadTip(w http.ResponseWriter, r *http.Request) {
 	requestId, ok := r.Context().Value("requestId").(string)
 	if !ok {
@@ -447,3 +488,5 @@ func (h *WordHandler) GetTip(w http.ResponseWriter, r *http.Request) {
 	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetTip")
 
 }
+
+*/

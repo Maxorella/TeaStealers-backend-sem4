@@ -6,7 +6,8 @@ import (
 	"errors"
 	"fmt"
 	audioHl "github.com/TeaStealers-backend-sem4/internal/audio/delivery"
-	audioUc "github.com/TeaStealers-backend-sem4/internal/audio/usecase"
+	statRep "github.com/TeaStealers-backend-sem4/internal/stat/repo"
+	statUc "github.com/TeaStealers-backend-sem4/internal/stat/usecase"
 	wordH "github.com/TeaStealers-backend-sem4/internal/word/delivery"
 	wordRep "github.com/TeaStealers-backend-sem4/internal/word/repo"
 	wordUc "github.com/TeaStealers-backend-sem4/internal/word/usecase"
@@ -15,6 +16,7 @@ import (
 	middleware2 "github.com/TeaStealers-backend-sem4/pkg/middleware"
 	minioS "github.com/TeaStealers-backend-sem4/pkg/minio"
 	minioH "github.com/TeaStealers-backend-sem4/pkg/minio/delivery"
+	utils2 "github.com/TeaStealers-backend-sem4/pkg/utils"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -50,7 +52,9 @@ func main() {
 	}
 
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
-	r.Use(middleware2.CORSMiddleware, middleware2.RequestIDMiddleware, middleware2.AccessLogMiddleware)
+	accessLogMiddleware := middleware2.NewAccessLogMiddleware(logr)
+	r.Use(middleware2.CORSMiddleware, middleware2.RequestIDMiddleware, accessLogMiddleware)
+
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)
 
 	minClient := minioS.NewMinioClient(cfg, logr)
@@ -63,22 +67,25 @@ func main() {
 	minH := minioH.NewMinioHandler(minClient, cfg, logr)
 	minH.RegisterRoutes(r)
 
-	aUc := audioUc.NewAudioUsecase()
-	auHandler := audioHl.NewAudioHandler(aUc, cfg, logr)
-	audio := r.PathPrefix("/audio").Subrouter()
-	audio.Handle("/save_audio", http.HandlerFunc(auHandler.SaveAudio)).Methods(http.MethodPost, http.MethodOptions)
-	audio.Handle("/translate_audio", http.HandlerFunc(auHandler.TranslateAudio)).Methods(http.MethodPost, http.MethodOptions)
+	minioStorageClient := utils2.NewFileStorageClient(cfg.MinCli.AddressPort)
 
 	wRepo := wordRep.NewRepository(db, logr)
 	wUc := wordUc.NewWordUsecase(wRepo, logr)
-	wHandler := wordH.NewWordHandler(wUc, cfg, logr)
+	statRepo := statRep.NewRepository(db, logr)
+	statUsecase := statUc.NewStatUsecase(statRepo, wRepo, logr)
+
+	auHandler := audioHl.NewAudioHandler(statUsecase, cfg, logr)
+	audio := r.PathPrefix("/audio").Subrouter()
+	audio.Handle("/translate_audio", http.HandlerFunc(auHandler.TranslateAudio)).Methods(http.MethodPost, http.MethodOptions)
+
+	wHandler := wordH.NewWordHandler(wUc, cfg, logr, minioStorageClient)
 	word := r.PathPrefix("/word").Subrouter()
 	tip := r.PathPrefix("/tip").Subrouter()
 	word.Handle("/rand/word", http.HandlerFunc(wHandler.GetRandomWord)).Methods(http.MethodPost)
 	word.Handle("/get_tags", http.HandlerFunc(wHandler.SelectTags)).Methods(http.MethodGet)
 	word.Handle("/stat/write_stat", http.HandlerFunc(wHandler.WriteStat)).Methods(http.MethodPost)
 	word.Handle("/stat/get_stat/{word_id}", http.HandlerFunc(wHandler.GetStat)).Methods(http.MethodGet)
-	word.Handle("/words_with_tag", http.HandlerFunc(wHandler.SelectWordsWithTag)).Methods(http.MethodPost)
+	word.Handle("/words_with_tag", http.HandlerFunc(wHandler.SelectWordsWithTopic)).Methods(http.MethodPost)
 	word.Handle("/{word}", http.HandlerFunc(wHandler.GetWord)).Methods(http.MethodGet)
 	word.Handle("/create_word", http.HandlerFunc(wHandler.CreateWordHandler)).Methods(http.MethodPost)
 	word.Handle("/pronunciation/{word}", http.HandlerFunc(wHandler.UploadAudioHandler)).Methods(http.MethodPost)

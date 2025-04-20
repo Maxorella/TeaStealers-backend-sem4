@@ -3,55 +3,31 @@ package models
 import "html"
 
 type CreateWordData struct {
+	WordID        *int   `json:"id,omitempty"`
 	Word          string `json:"word"`
 	Transcription string `json:"transcription"`
-	Tags          string `json:"tags"`
+	AudioLink     string `json:"audio_link"`
+	Topic         string `json:"topic"`
 }
 
 func (wd *CreateWordData) Sanitize() {
 	wd.Word = html.EscapeString(wd.Word)
 	wd.Transcription = html.EscapeString(wd.Transcription)
-}
-
-type TagsList struct {
-	Tags []string `json:"tags"`
-}
-type OneTag struct {
-	Tag string `json:"tag"`
-}
-
-type WordStat struct {
-	Id         int `json:"id"`
-	TotalPlus  int `json:"plus"`
-	TotalMinus int `json:"minus"`
+	wd.Topic = html.EscapeString(wd.Topic)
 }
 
 type WordData struct {
-	WordID        int    `json:"word_id"`
+	WordID        *int   `json:"id,omitempty"`
 	Word          string `json:"word"`
-	Tags          string `json:"tags"`
+	Topic         string `json:"topic"`
 	Transcription string `json:"transcription"`
-	Link          string `json:"link"`
+	AudioLink     string `json:"audio_link"`
+	Progress      *int   `json:"progress,omitempty"`
 }
 
 func (wd *WordData) Sanitize() {
 	wd.Word = html.EscapeString(wd.Word)
-	wd.Tags = html.EscapeString(wd.Tags)
+	wd.Topic = html.EscapeString(wd.Topic)
 	wd.Transcription = html.EscapeString(wd.Transcription)
-	wd.Link = html.EscapeString(wd.Link)
-}
-
-type TipData struct {
-	TipID      int    `json:"tipID,omitempty"`
-	Phonema    string `json:"phonema"`
-	TipText    string `json:"tipText"`
-	TipPicture string `json:"tipPicture"`
-	TipAudio   string `json:"tipAudio"`
-}
-
-func (td *TipData) Sanitize() {
-	td.Phonema = html.EscapeString(td.Phonema)
-	td.TipText = html.EscapeString(td.TipText)
-	td.TipPicture = html.EscapeString(td.TipPicture)
-	td.TipAudio = html.EscapeString(td.TipAudio)
+	wd.AudioLink = html.EscapeString(wd.AudioLink)
 }

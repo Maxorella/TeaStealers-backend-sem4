@@ -1,8 +1,12 @@
 package repo
 
 const (
-	CreateWordSql              = `INSERT INTO word_etalon (word, transcription, tags) VALUES ($1, $2, $3) RETURNING word_id;`
-	SelectWordSql              = `SELECT word_id, word, transcription, audio_id from word_etalon WHERE word = $1;`
+	// new sql
+	SelectWordSql = `SELECT word_id, word, transcription, audio_link, topic from word_etalon WHERE word = $1 AND is_deleted = FALSE;`
+	CreateWordSql = `INSERT INTO word_etalon (word, transcription, audio_link, topic) VALUES ($1, $2, $3, $4) RETURNING word_id;`
+	InsertTopic   = `INSERT INTO word_topic (topic) VALUES ($1) ON CONFLICT (topic) DO NOTHING;`
+
+	//old sql
 	UploadLinkSql              = `UPDATE word_etalon SET audio_id = $1 WHERE word = $2 AND is_deleted = FALSE;`
 	GetWordCountSql            = `SELECT COUNT(*) from word_etalon;`
 	SelectRandomWordSql        = `SELECT word_id, word, transcription, tags, audio_id   FROM word_etalon ORDER BY RANDOM() LIMIT 1;`

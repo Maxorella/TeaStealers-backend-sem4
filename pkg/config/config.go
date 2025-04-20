@@ -14,6 +14,7 @@ type Config struct {
 	AudioUserDir    string `env:"USER_AUDIO_DIR" env-default:"/ouzi/audio"`
 	AudioExampleDir string `env:"EXAMPLE_AUDIO_DIR" env-default:"/ouzi/examples/"`
 	MinioService    MinioS3
+	MinCli          MinioClient
 }
 
 /*
@@ -35,10 +36,15 @@ type MinioS3 struct {
 	MinioUseSSL       bool   `env:"MINIO_USE_SSL" env-default:"false"`
 }
 
+type MinioClient struct {
+	AddressPort string `env:"MINIO_CLIENT_ADR_PORT" env-default:"http://localhost:8080"`
+}
+
 type MlService struct {
-	Address string        `env:"ML_ADDRESS" env-default:"178.57.232.224"`
-	Port    string        `env:"ML_PORT" env-default:"5000"`
-	Timeout time.Duration `env:"ML_TIMEOUT" env-default:"10s"`
+	Address            string        `env:"ML_ADDRESS" env-default:"178.57.232.224"`
+	Port               string        `env:"ML_PORT" env-default:"5000"`
+	Timeout            time.Duration `env:"ML_TIMEOUT" env-default:"10s"`
+	TranscribeEndpoint string        `env:"ML_ENDPOINT"`
 }
 
 func MustLoad() *Config {

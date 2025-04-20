@@ -1,6 +1,21 @@
 package apperrors
 
-import "errors"
+import (
+	"errors"
+	"github.com/TeaStealers-backend-sem4/internal/models"
+	servererrors "github.com/TeaStealers-backend-sem4/pkg/server_errors"
+	"net/http"
+)
+
+var errToCode = map[error]int{
+	// HTTP errors
+	servererrors.ErrInvalidRequestData: http.StatusBadRequest, // 400
+
+	// Usecase errors
+
+	// Repository errors
+
+}
 
 // Ошибки, связанные с параметрами.
 var (
@@ -31,3 +46,20 @@ var (
 var (
 	ErrCreateWOrd = errors.New("failed to create word")
 )
+
+func GetErrAndCodeToSend(err error) (int, error) {
+	var source error
+	for err != nil {
+		if errors.Is(err, models.ErrValidation) {
+			return http.StatusBadRequest, err
+		}
+		source = err
+		err = errors.Unwrap(err)
+	}
+
+	code, ok := errToCode[source]
+	if !ok {
+		return http.StatusInternalServerError, servererrors.ErrInternalServer
+	}
+	return code, source
+}
