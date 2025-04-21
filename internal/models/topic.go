@@ -3,15 +3,22 @@ package models
 import "html"
 
 type TopicsList struct {
-	Topics []string `json:"topics"`
+	Topics []OneTopic `json:"topics"`
 }
 
 func (tl *TopicsList) Sanitize() {
-	for i, topic := range tl.Topics {
-		tl.Topics[i] = html.EscapeString(topic)
+	for _, topic := range tl.Topics {
+		topic.Sanitize()
 	}
 }
 
 type OneTopic struct {
-	Topic string `json:"topic"`
+	TopicId   *int
+	Topic     string `json:"topic"`
+	AllWords  *int   `json:"all_words"`
+	TrueWords *int   `json:"true_words"`
+}
+
+func (tl *OneTopic) Sanitize() {
+	tl.Topic = html.EscapeString(tl.Topic)
 }

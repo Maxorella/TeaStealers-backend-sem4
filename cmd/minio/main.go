@@ -1,24 +1,6 @@
 package main
 
-import (
-	"context"
-	"errors"
-	"fmt"
-	"github.com/TeaStealers-backend-sem4/pkg/config"
-	"github.com/TeaStealers-backend-sem4/pkg/logger"
-	middleware2 "github.com/TeaStealers-backend-sem4/pkg/middleware"
-	minioS "github.com/TeaStealers-backend-sem4/pkg/minio"
-	minioH "github.com/TeaStealers-backend-sem4/pkg/minio/delivery"
-	"github.com/joho/godotenv"
-
-	"github.com/gorilla/mux"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-)
-
+/*
 func main() {
 	_ = godotenv.Load()
 	cfg := config.MustLoad()
@@ -79,3 +61,5 @@ func pingPongHandler(w http.ResponseWriter, r *http.Request) {
 	//w.Write([]byte("Hello World"))
 	fmt.Fprintln(w, "pong")
 }
+
+*/

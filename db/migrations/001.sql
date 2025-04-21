@@ -29,8 +29,18 @@ DROP TABLE IF EXISTS word_progress;
 CREATE TABLE IF NOT EXISTS word_progress(
     word_id INT PRIMARY KEY REFERENCES word_etalon(word_id),
     -- user_id INT TODO add user
+    word TEXT,
+    topic TEXT,
     progress INT
 );
+
+--DROP TABLE IF EXISTS topic_progress;
+--CREATE TABLE IF NOT EXISTS topic_progress(
+    -- user_id INT TODO add user double primary key
+--    topic TEXT  PRIMARY KEY,
+--    true_words INT,
+--   all_words INT
+--);
 
 
 DROP TABLE IF EXISTS word_tip;

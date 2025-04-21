@@ -5,73 +5,61 @@ import (
 	"errors"
 	"fmt"
 	"github.com/TeaStealers-backend-sem4/internal/models"
+	statRep "github.com/TeaStealers-backend-sem4/internal/stat/repo"
 	"github.com/TeaStealers-backend-sem4/internal/word/repo"
 	"github.com/TeaStealers-backend-sem4/pkg/logger"
 	utils2 "github.com/TeaStealers-backend-sem4/pkg/utils"
-	"github.com/satori/uuid"
 )
 
 type WordUsecase struct {
-	repo   *repo.WordRepo
-	logger logger.Logger
+	wordRepo *repo.WordRepo
+	statRepo *statRep.StatRepo
+	logger   logger.Logger
 }
 
-func NewWordUsecase(repo *repo.WordRepo, logger logger.Logger) *WordUsecase {
+func NewWordUsecase(repoWord *repo.WordRepo, repoStat *statRep.StatRepo, logger logger.Logger) *WordUsecase {
 	return &WordUsecase{
-		repo:   repo,
-		logger: logger,
+		wordRepo: repoWord,
+		statRepo: repoStat,
+		logger:   logger,
 	}
 }
 
 func (uc *WordUsecase) CreateWord(ctx context.Context, wordCreateData *models.CreateWordData) (int, error) {
 	requestId := utils2.GetRequestIDFromCtx(ctx)
-	tx, err := uc.repo.BeginTx(ctx)
+	tx, err := uc.wordRepo.BeginTx(ctx)
+	if err != nil {
+		return 0, errors.New("error begin tx")
+	}
 
-	wordId, err := uc.repo.CreateWord(ctx, tx, wordCreateData)
+	_, err = uc.wordRepo.GetWordByWord(ctx, wordCreateData.Word)
+	if err == nil {
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateWord", errors.New("word already exists"))
+		return 0, errors.New("word already exists")
+	}
+	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", err.Error())
+
+	wordId, err := uc.wordRepo.CreateWord(ctx, tx, wordCreateData)
 	if err != nil {
 		tx.Rollback()
 		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateWord", err)
 		return 0, errors.New("failed to create word")
 	}
 
-	err = uc.repo.InsertTopic(ctx, tx, wordCreateData.Topic)
+	err = uc.statRepo.InsertTopic(ctx, tx, wordCreateData.Topic)
 
 	if err != nil {
 		tx.Rollback()
 		return 0, errors.New("failed to create topic")
 	}
 	tx.Commit()
-	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", fmt.Sprintf("created new word, id: %d", word_id))
+	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", fmt.Sprintf("created new word, id: %d", wordId))
 	return wordId, nil
 }
 
-func (uc *WordUsecase) UploadLink(ctx context.Context, wordLink *models.WordData) error {
-	requestId, ok := ctx.Value("requestId").(string)
-	if !ok {
-		requestId = uuid.NewV4().String()
-		ctx = context.WithValue(ctx, "requestId", requestId)
-		uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", "new reqId")
-	}
-
-	err := uc.repo.UploadLink(ctx, wordLink)
-
-	if err != nil {
-		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateWord", err)
-		return errors.New("failed to upload uuid")
-	}
-	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", "uploaded uuid to word")
-	return nil
-}
-
 func (uc *WordUsecase) GetWord(ctx context.Context, wordData *models.WordData) (*models.WordData, error) {
-	requestId, ok := ctx.Value("requestId").(string)
-	if !ok {
-		requestId = uuid.NewV4().String()
-		ctx = context.WithValue(ctx, "requestId", requestId)
-		uc.logger.LogInfo(requestId, logger.UsecaseLayer, "GetWord", "new reqId")
-	}
-
-	gotWord, err := uc.repo.GetWord(ctx, wordData)
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+	gotWord, err := uc.wordRepo.GetWordByWord(ctx, wordData.Word)
 
 	if err != nil {
 		uc.logger.LogError(requestId, logger.UsecaseLayer, "GetWord", err)
@@ -81,6 +69,7 @@ func (uc *WordUsecase) GetWord(ctx context.Context, wordData *models.WordData) (
 	return gotWord, nil
 }
 
+/*
 func (uc *WordUsecase) GetRandomWord(ctx context.Context, wordTag string) (*models.WordData, error) {
 	requestId, ok := ctx.Value("requestId").(string)
 	if !ok {
@@ -115,22 +104,22 @@ func (uc *WordUsecase) SelectWordsWithTopic(ctx context.Context, tag string) (*[
 	return gotwords, err
 }
 
-func (uc *WordUsecase) WriteStat(ctx context.Context, stat *models.WordStat) error {
-	err := uc.repo.WriteStat(ctx, stat)
-	return err
-}
-
-func (uc *WordUsecase) GetStat(ctx context.Context, word_id int) (*models.WordStat, error) {
-	stat, err := uc.repo.GetStat(ctx, word_id)
-	return stat, err
-}
+*/
 
 func (uc *WordUsecase) UploadTip(ctx context.Context, data *models.TipData) error {
-	err := uc.repo.UploadTip(ctx, data)
+	tx, err := uc.wordRepo.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	err = uc.wordRepo.UploadTip(ctx, tx, data)
 	return err
 }
 
 func (uc *WordUsecase) GetTip(ctx context.Context, data *models.TipData) (*models.TipData, error) {
-	gotTip, err := uc.repo.GetTip(ctx, data)
+	tx, err := uc.wordRepo.BeginTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	gotTip, err := uc.wordRepo.GetTip(ctx, tx, data)
 	return gotTip, err
 }

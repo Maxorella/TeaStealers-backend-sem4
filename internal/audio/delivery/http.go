@@ -62,11 +62,11 @@ func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
 	response, err := utils.TranscribeMLService(mlServiceURL, file, head.Filename, timeout)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			h.logger.LogError(requestId, logger.DeliveryLayer, "TranslateAudio", errors.New("wav and mp3 only"))
+			h.logger.LogError(requestId, logger.DeliveryLayer, "TranslateAudio", errors.New("ML service timeout"))
 			utils.WriteError(w, http.StatusGatewayTimeout, "ML service timeout")
 			return
 		} else {
-			h.logger.LogError(requestId, logger.DeliveryLayer, "TranslateAudio", errors.New("wav and mp3 only"))
+			h.logger.LogError(requestId, logger.DeliveryLayer, "TranslateAudio", errors.New("ML service unavailable"))
 			utils.WriteError(w, http.StatusInternalServerError, "ML service unavailable")
 			return
 		}

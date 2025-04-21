@@ -2,10 +2,25 @@ package repo
 
 const (
 	// new sql
-	SelectWordSql = `SELECT word_id, word, transcription, audio_link, topic from word_etalon WHERE word = $1 AND is_deleted = FALSE;`
-	CreateWordSql = `INSERT INTO word_etalon (word, transcription, audio_link, topic) VALUES ($1, $2, $3, $4) RETURNING word_id;`
-	InsertTopic   = `INSERT INTO word_topic (topic) VALUES ($1) ON CONFLICT (topic) DO NOTHING;`
-
+	SelectWordSql                 = `SELECT word_id, word, transcription, audio_link, topic from word_etalon WHERE word = $1 AND is_deleted = FALSE;`
+	CreateWordSql                 = `INSERT INTO word_etalon (word, transcription, audio_link, topic) VALUES ($1, $2, $3, $4) RETURNING word_id;`
+	InsertWordTip                 = `INSERT INTO word_tip (phonema, tip_text, tip_audio_link, tip_video_link) VALUES ($1, $2, $3, $4);`
+	SelectWordTip                 = `SELECT phonema, tip_text, tip_audio_link, tip_video_link from word_tip WHERE phonema = $1;`
+	SelectWordWithProgressByTopic = `SELECT 
+    we.word_id,
+    we.word,
+    we.transcription,
+    we.audio_link,
+    we.topic,
+    COALESCE(
+        (SELECT wp.progress 
+         FROM word_progress wp 
+         WHERE wp.word_id = we.word_id), 
+    0) AS progress
+FROM 
+    word_etalon we
+WHERE 
+    we.topic = $1`
 	//old sql
 	UploadLinkSql              = `UPDATE word_etalon SET audio_id = $1 WHERE word = $2 AND is_deleted = FALSE;`
 	GetWordCountSql            = `SELECT COUNT(*) from word_etalon;`
@@ -21,5 +36,4 @@ const (
 	SelectBigStat      = `SELECT word_id, total_plus, total_minus FROM user_word_summary WHERE word_id=$1;`
 
 	CreateWordTip = `INSERT INTO word_tip (phonema, tip_text, tip_picture, tip_audio) VALUES ($1, $2,$3,$4);`
-	SelectWordTip = `SELECT phonema, tip_text, tip_picture, tip_audio from word_tip WHERE phonema = $1;`
 )

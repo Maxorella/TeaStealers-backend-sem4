@@ -14,7 +14,6 @@ type responseWriter struct {
 	body   []byte
 }
 
-/*
 func (rw *responseWriter) WriteHeader(status int) {
 	rw.status = status
 	rw.ResponseWriter.WriteHeader(status)
@@ -24,8 +23,6 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	rw.body = b
 	return rw.ResponseWriter.Write(b)
 }
-
-*/
 
 func NewAccessLogMiddleware(loggr logger.Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -37,9 +34,9 @@ func NewAccessLogMiddleware(loggr logger.Logger) func(next http.Handler) http.Ha
 			}
 
 			requestID := utils.GetRequestIDFromCtx(r.Context())
-			if requestID == "" {
-				requestID = "unknown"
-			}
+			//if requestID == "" {
+			//	requestID = "unknown"
+			//}
 
 			next.ServeHTTP(wrappedWriter, r)
 
@@ -64,6 +61,6 @@ func NewAccessLogMiddleware(loggr logger.Logger) func(next http.Handler) http.Ha
 					fmt.Sprintf("%s %s completed in %v", method, path, duration),
 				)
 			}
-		}
+		})
 	}
 }

@@ -1,15 +1,14 @@
 package delivery
 
 import (
-	"context"
 	"errors"
 	"github.com/TeaStealers-backend-sem4/internal/models"
+	"github.com/TeaStealers-backend-sem4/internal/stat"
 	"github.com/TeaStealers-backend-sem4/internal/word"
 	"github.com/TeaStealers-backend-sem4/pkg/config"
 	"github.com/TeaStealers-backend-sem4/pkg/logger"
 	utils2 "github.com/TeaStealers-backend-sem4/pkg/utils"
 	"github.com/gorilla/mux"
-	"github.com/satori/uuid"
 	"net/http"
 	"path/filepath"
 	"slices"
@@ -22,16 +21,17 @@ const (
 )
 
 type WordHandler struct {
-	// uc represents the usecase interface for authentication.
-	uc        word.WordUsecase
+	// uc represents the usecase interface for authentication. u
+	ucWord    word.WordUsecase
+	ucStat    stat.StatUsecase
 	cfg       *config.Config
 	logger    logger.Logger
 	minClient *utils2.FileStorageClient
 }
 
 // NewAuthHandler creates a new instance of AuthHandler.
-func NewWordHandler(uc word.WordUsecase, cfg *config.Config, logr logger.Logger, minCl *utils2.FileStorageClient) *WordHandler {
-	return &WordHandler{uc: uc, cfg: cfg, logger: logr, minClient: minCl}
+func NewWordHandler(ucWord word.WordUsecase, ucStat stat.StatUsecase, cfg *config.Config, logr logger.Logger, minCl *utils2.FileStorageClient) *WordHandler {
+	return &WordHandler{ucWord: ucWord, ucStat: ucStat, cfg: cfg, logger: logr, minClient: minCl}
 
 }
 
@@ -49,14 +49,13 @@ func (h *WordHandler) GetWord(w http.ResponseWriter, r *http.Request) {
 	}
 	wordU := &models.WordData{Word: reqWord}
 	wordU.Sanitize()
-	gotWord, err := h.uc.GetWord(r.Context(), wordU)
+	gotWord, err := h.ucWord.GetWord(r.Context(), wordU)
 	if err != nil {
 		utils2.WriteError(w, http.StatusInternalServerError, "error get word")
 		return
 	}
 
-	fileStorageClient := utils2.NewFileStorageClient("http://localhost:8080")
-	audioLink, err := fileStorageClient.GetFileLink(gotWord.AudioLink)
+	audioLink, err := h.minClient.GetFileLink(gotWord.AudioLink)
 	if err != nil {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "GetWord", err)
 		utils2.WriteError(w, http.StatusInternalServerError, "failed to get link")
@@ -74,7 +73,7 @@ func (h *WordHandler) GetWord(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (h *WordHandler) CreateWordHandler(w http.ResponseWriter, r *http.Request) {
+func (h *WordHandler) CreateWord(w http.ResponseWriter, r *http.Request) {
 
 	requestId := utils2.GetRequestIDFromCtx(r.Context())
 
@@ -103,18 +102,21 @@ func (h *WordHandler) CreateWordHandler(w http.ResponseWriter, r *http.Request) 
 	if formWord == "" {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordHandler", errors.New("no word"))
 		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
 	}
 
 	formTranscription := r.FormValue("transcription")
 	if formTranscription == "" {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordHandler", errors.New("no transcription"))
 		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
 	}
 
 	formTopic := r.FormValue("topic")
 	if formTopic == "" {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordHandler", errors.New("no topic"))
 		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
 	}
 
 	audioLink, err := h.minClient.UploadFile(audioFile, audioHead.Filename)
@@ -126,7 +128,7 @@ func (h *WordHandler) CreateWordHandler(w http.ResponseWriter, r *http.Request) 
 
 	wordData := models.CreateWordData{Word: formWord, Transcription: formTranscription, Topic: formTopic, AudioLink: audioLink}
 
-	_, err = h.uc.CreateWord(context.Background(), &wordData)
+	_, err = h.ucWord.CreateWord(r.Context(), &wordData)
 	if err != nil {
 		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordHandler", err, http.StatusInternalServerError)
 		utils2.WriteError(w, http.StatusInternalServerError, "error create word")
@@ -140,68 +142,183 @@ func (h *WordHandler) CreateWordHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "CreateWordHandler")
-
+	return
 }
 
-func (h *WordHandler) UploadAudioHandler(w http.ResponseWriter, r *http.Request) {
-	requestId, ok := r.Context().Value("requestId").(string)
-	if !ok {
-		requestId = uuid.NewV4().String()
-		// ctx = context.WithValue(r.Context(), "requestId", requestId)
-	}
+func (h *WordHandler) WordsWithTopicHandler(w http.ResponseWriter, r *http.Request) {
 
-	vars := mux.Vars(r)
-	wordVar := vars["word"]
-	if wordVar == "" {
-		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "UploadAudioHandler", errors.New("empty word"), 400)
-		utils2.WriteError(w, http.StatusBadRequest, "word parameter is required")
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
+	topic := &models.OneTopic{}
+
+	if err := utils2.ReadRequestData(r, &topic); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WordsWithTopicHandler", err, http.StatusBadRequest)
+		utils2.WriteError(w, http.StatusBadRequest, "incorrect data format")
 		return
 	}
+	h.logger.LogInfo(requestId, logger.DeliveryLayer, "WordsWithTopicHandler", "topic to get "+topic.Topic)
+
+	gotWords, err := h.ucStat.WordsWithTopic(r.Context(), topic.Topic)
+	if err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WordsWithTopicHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error create word")
+		return
+	}
+
+	if err := utils2.WriteResponse(w, http.StatusCreated, gotWords); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WordsWithTopicHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "WordsWithTopicHandler")
+	return
+}
+
+func (h *WordHandler) UploadTipHandler(w http.ResponseWriter, r *http.Request) {
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
 
 	if err := r.ParseMultipartForm(5 << 20); err != nil {
 		utils2.WriteError(w, http.StatusBadRequest, "max size file 5 mb")
 		return
 	}
-	h.logger.LogInfo(requestId, logger.DeliveryLayer, "UploadAudioHandler", "parsed multipart form")
+	h.logger.LogInfo(requestId, logger.DeliveryLayer, "UploadTip", "parsed multipart form")
 
-	file, head, err := r.FormFile("file")
+	audio_file, head_audio, err := r.FormFile("tip_audio")
 	if err != nil {
-		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadAudioHandler", err)
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
 		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
 		return
 	}
-	defer file.Close()
+	defer audio_file.Close()
+
+	media_file, head_media, err := r.FormFile("tip_media")
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+	defer audio_file.Close()
 
 	allowedExtensions := []string{".wav", ".mp3"}
-	fileType := strings.ToLower(filepath.Ext(head.Filename))
+	fileType := strings.ToLower(filepath.Ext(head_audio.Filename))
 	if !slices.Contains(allowedExtensions, fileType) {
 		utils2.WriteError(w, http.StatusBadRequest, "wav and mp3 only")
 		return
 	}
+	phonema := r.FormValue("phonema")
+	if phonema == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", errors.New("no sound"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+	}
+	tip := r.FormValue("tip")
+	if tip == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", errors.New("no tip"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+	}
 
-	h.logger.LogInfo(requestId, logger.DeliveryLayer, "UploadAudioHandler", "got file")
-
-	fileStorageClient := utils2.NewFileStorageClient("http://localhost:8080")
-	audioLink, err := fileStorageClient.UploadFile(file, head.Filename)
+	tipAudioLink, err := h.minClient.UploadFile(audio_file, head_audio.Filename)
 	if err != nil {
-		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadAudioHandler", err)
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
 		utils2.WriteError(w, http.StatusInternalServerError, "failed to upload file")
 		return
 	}
 
-	data := models.WordData{
-		Word:      wordVar,
-		AudioLink: audioLink,
+	tipPicLink, err := h.minClient.UploadFile(media_file, head_media.Filename)
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
+		utils2.WriteError(w, http.StatusInternalServerError, "failed to upload file")
+		return
+	}
+	data := models.TipData{
+		Phonema:      phonema,
+		TipText:      tip,
+		TipMediaLink: tipPicLink,
+		TipAudioLink: tipAudioLink,
 	}
 	data.Sanitize()
 
-	if err := h.uc.UploadLink(r.Context(), &data); err != nil {
-		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadAudioHandler", err)
-		utils2.WriteError(w, http.StatusInternalServerError, "failed to update word audio")
+	if err := h.ucWord.UploadTip(r.Context(), &data); err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
+		utils2.WriteError(w, http.StatusInternalServerError, "failed to upload tip")
+		return
+	}
+	if err := utils2.WriteResponse(w, http.StatusOK, "uploaded tip"); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "UploadTip", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
 		return
 	}
 }
 
+func (h *WordHandler) GetTipHandler(w http.ResponseWriter, r *http.Request) {
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
+	tip := models.TipData{}
+
+	if err := utils2.ReadRequestData(r, &tip); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetTip", err, http.StatusBadRequest)
+		utils2.WriteError(w, http.StatusBadRequest, "incorrect data format")
+		return
+	}
+	tip.Sanitize()
+	gotTip, err := h.ucWord.GetTip(r.Context(), &tip)
+	if err != nil {
+		utils2.WriteError(w, http.StatusInternalServerError, "error get tip")
+		return
+	}
+
+	audioLink, err := h.minClient.GetFileLink(gotTip.TipAudioLink)
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "GetTip", err)
+		utils2.WriteError(w, http.StatusInternalServerError, "failed to get link")
+		return
+	}
+
+	gotTip.TipAudioLink = audioLink
+
+	picLink, err := h.minClient.GetFileLink(gotTip.TipMediaLink)
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "GetTip", err)
+		utils2.WriteError(w, http.StatusInternalServerError, "failed to get link")
+		return
+	}
+
+	gotTip.TipMediaLink = picLink
+	if err := utils2.WriteResponse(w, http.StatusOK, gotTip); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetTip", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetTip")
+
+}
+
+func (h *WordHandler) GetTopicProgressHandler(w http.ResponseWriter, r *http.Request) {
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
+	topic := &models.OneTopic{}
+
+	if err := utils2.ReadRequestData(r, &topic); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetTopicProgressHandler", err, http.StatusBadRequest)
+		utils2.WriteError(w, http.StatusBadRequest, "incorrect data format")
+		return
+	}
+
+	gotTopic, err := h.ucStat.GetTopicProgress(r.Context(), topic.Topic)
+	if err != nil {
+		utils2.WriteError(w, http.StatusInternalServerError, "error get topic progress")
+		return
+	}
+
+	if err := utils2.WriteResponse(w, http.StatusOK, gotTopic); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetTopicProgressHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetTopicProgressHandler")
+
+}
+
+/* TODO в последнюю очередь с redis
 func (h *WordHandler) GetRandomWord(w http.ResponseWriter, r *http.Request) {
 	requestId, ok := r.Context().Value("requestId").(string)
 	if !ok {
@@ -242,6 +359,8 @@ func (h *WordHandler) GetRandomWord(w http.ResponseWriter, r *http.Request) {
 	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetRandomWord")
 
 }
+
+*/
 
 /*
 func (h *WordHandler) SelectTags(w http.ResponseWriter, r *http.Request) {
@@ -297,196 +416,7 @@ func (h *WordHandler) SelectWordsWithTopic(w http.ResponseWriter, r *http.Reques
 
 }
 */
-/*
-func (h *WordHandler) WriteStat(w http.ResponseWriter, r *http.Request) {
-	requestId, ok := r.Context().Value("requestId").(string)
-	if !ok {
-		requestId = uuid.NewV4().String()
-	}
-
-	stat := models.WordUserStat{}
-
-	if err := utils2.ReadRequestData(r, &stat); err != nil {
-		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WriteStat", err, http.StatusBadRequest)
-		utils2.WriteError(w, http.StatusBadRequest, "incorrect data format")
-		return
-	}
-	err := h.uc.WriteStat(r.Context(), &stat)
-	if err != nil {
-		utils2.WriteError(w, http.StatusInternalServerError, "error get tags")
-		return
-	}
-
-	if err := utils2.WriteResponse(w, http.StatusOK, ""); err != nil {
-		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WriteStat", err, http.StatusInternalServerError)
-		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
-		return
-	}
-
-	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "WriteStat")
-
-}
-
-*/
 
 /*
-func (h *WordHandler) GetStat(w http.ResponseWriter, r *http.Request) {
-	requestId, ok := r.Context().Value("requestId").(string)
-	if !ok {
-		requestId = uuid.NewV4().String()
-	}
 
-	vars := mux.Vars(r)
-	word_id_St := vars["word_id"]
-	word_id, err := strconv.Atoi(word_id_St)
-	if err != nil {
-		utils2.WriteError(w, http.StatusBadRequest, "bad word_id")
-		return
-	}
-	stat, err := h.uc.GetStat(r.Context(), word_id)
-	if err != nil {
-		utils2.WriteError(w, http.StatusInternalServerError, "error get word")
-		return
-	}
-	stat.Id = word_id
-	if err := utils2.WriteResponse(w, http.StatusOK, stat); err != nil {
-		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WriteStat", err, http.StatusInternalServerError)
-		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
-		return
-	}
-
-	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "WriteStat")
-
-}
-
-*/
-/*
-func (h *WordHandler) UploadTip(w http.ResponseWriter, r *http.Request) {
-	requestId, ok := r.Context().Value("requestId").(string)
-	if !ok {
-		requestId = uuid.NewV4().String()
-		// ctx = context.WithValue(r.Context(), "requestId", requestId)
-	}
-
-	if err := r.ParseMultipartForm(5 << 20); err != nil {
-		utils2.WriteError(w, http.StatusBadRequest, "max size file 5 mb")
-		return
-	}
-	h.logger.LogInfo(requestId, logger.DeliveryLayer, "UploadTip", "parsed multipart form")
-
-	audio_file, head_audio, err := r.FormFile("tip_audio")
-	if err != nil {
-		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
-		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
-		return
-	}
-	defer audio_file.Close()
-
-	picture_file, head_picture, err := r.FormFile("tip_picture")
-	if err != nil {
-		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
-		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
-		return
-	}
-	defer audio_file.Close()
-
-	allowedExtensions := []string{".wav", ".mp3"}
-	fileType := strings.ToLower(filepath.Ext(head_audio.Filename))
-	if !slices.Contains(allowedExtensions, fileType) {
-		utils2.WriteError(w, http.StatusBadRequest, "wav and mp3 only")
-		return
-	}
-	phonema := r.FormValue("phonema")
-	if phonema == "" {
-		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", errors.New("no sound"))
-		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
-	}
-	tip := r.FormValue("tip")
-	if tip == "" {
-		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", errors.New("no tip"))
-		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
-	}
-
-	fileStorageClient := utils2.NewFileStorageClient("http://localhost:8080")
-	tipAudioLink, err := fileStorageClient.UploadFile(audio_file, head_audio.Filename)
-	if err != nil {
-		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
-		utils2.WriteError(w, http.StatusInternalServerError, "failed to upload file")
-		return
-	}
-
-	tipPicLink, err := fileStorageClient.UploadFile(picture_file, head_picture.Filename)
-	if err != nil {
-		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
-		utils2.WriteError(w, http.StatusInternalServerError, "failed to upload file")
-		return
-	}
-	data := models.TipData{
-		Phonema:    phonema,
-		TipText:    tip,
-		TipPicture: tipPicLink,
-		TipAudio:   tipAudioLink,
-	}
-	data.Sanitize()
-
-	if err := h.uc.UploadTip(r.Context(), &data); err != nil {
-		h.logger.LogError(requestId, logger.DeliveryLayer, "UploadTip", err)
-		utils2.WriteError(w, http.StatusInternalServerError, "failed to upload tip")
-		return
-	}
-	if err := utils2.WriteResponse(w, http.StatusOK, "uploaded tip"); err != nil {
-		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "UploadTip", err, http.StatusInternalServerError)
-		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
-		return
-	}
-}
-
-func (h *WordHandler) GetTip(w http.ResponseWriter, r *http.Request) {
-	requestId, ok := r.Context().Value("requestId").(string)
-	if !ok {
-		requestId = uuid.NewV4().String()
-	}
-
-	tip := models.TipData{}
-
-	if err := utils2.ReadRequestData(r, &tip); err != nil {
-		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetTip", err, http.StatusBadRequest)
-		utils2.WriteError(w, http.StatusBadRequest, "incorrect data format")
-		return
-	}
-	tip.Sanitize()
-	gotTip, err := h.uc.GetTip(r.Context(), &tip)
-	if err != nil {
-		utils2.WriteError(w, http.StatusInternalServerError, "error get tip")
-		return
-	}
-
-	fileStorageClient := utils2.NewFileStorageClient("http://localhost:8080")
-	audioLink, err := fileStorageClient.GetFileLink(gotTip.TipAudio)
-	if err != nil {
-		h.logger.LogError(requestId, logger.DeliveryLayer, "GetTip", err)
-		utils2.WriteError(w, http.StatusInternalServerError, "failed to get link")
-		return
-	}
-
-	gotTip.TipAudio = audioLink
-
-	picLink, err := fileStorageClient.GetFileLink(gotTip.TipPicture)
-	if err != nil {
-		h.logger.LogError(requestId, logger.DeliveryLayer, "GetTip", err)
-		utils2.WriteError(w, http.StatusInternalServerError, "failed to get link")
-		return
-	}
-
-	gotTip.TipPicture = picLink
-	if err := utils2.WriteResponse(w, http.StatusOK, gotTip); err != nil {
-		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetTip", err, http.StatusInternalServerError)
-		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
-		return
-	}
-
-	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetTip")
-
-}
-
-*/
+ */

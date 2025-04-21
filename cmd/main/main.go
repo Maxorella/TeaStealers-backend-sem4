@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	audioHl "github.com/TeaStealers-backend-sem4/internal/audio/delivery"
+	statHl "github.com/TeaStealers-backend-sem4/internal/stat/delivery"
 	statRep "github.com/TeaStealers-backend-sem4/internal/stat/repo"
 	statUc "github.com/TeaStealers-backend-sem4/internal/stat/usecase"
 	wordH "github.com/TeaStealers-backend-sem4/internal/word/delivery"
@@ -53,7 +54,7 @@ func main() {
 
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
 	accessLogMiddleware := middleware2.NewAccessLogMiddleware(logr)
-	r.Use(middleware2.CORSMiddleware, middleware2.RequestIDMiddleware, accessLogMiddleware)
+	r.Use(middleware2.RequestIDMiddleware, middleware2.CORSMiddleware, accessLogMiddleware)
 
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)
 
@@ -70,27 +71,38 @@ func main() {
 	minioStorageClient := utils2.NewFileStorageClient(cfg.MinCli.AddressPort)
 
 	wRepo := wordRep.NewRepository(db, logr)
-	wUc := wordUc.NewWordUsecase(wRepo, logr)
 	statRepo := statRep.NewRepository(db, logr)
+
 	statUsecase := statUc.NewStatUsecase(statRepo, wRepo, logr)
+	wordUsecase := wordUc.NewWordUsecase(wRepo, statRepo, logr)
 
-	auHandler := audioHl.NewAudioHandler(statUsecase, cfg, logr)
+	audioHandler := audioHl.NewAudioHandler(statUsecase, cfg, logr)
+	statHandler := statHl.NewStatHandler(statUsecase, cfg, logr, minioStorageClient)
+	wordHandler := wordH.NewWordHandler(wordUsecase, statUsecase, cfg, logr, minioStorageClient)
+
 	audio := r.PathPrefix("/audio").Subrouter()
-	audio.Handle("/translate_audio", http.HandlerFunc(auHandler.TranslateAudio)).Methods(http.MethodPost, http.MethodOptions)
+	audio.Handle("/translate_audio", http.HandlerFunc(audioHandler.TranslateAudio)).Methods(http.MethodPost, http.MethodOptions)
 
-	wHandler := wordH.NewWordHandler(wUc, cfg, logr, minioStorageClient)
 	word := r.PathPrefix("/word").Subrouter()
+	topic := r.PathPrefix("/topic").Subrouter()
 	tip := r.PathPrefix("/tip").Subrouter()
-	word.Handle("/rand/word", http.HandlerFunc(wHandler.GetRandomWord)).Methods(http.MethodPost)
-	word.Handle("/get_tags", http.HandlerFunc(wHandler.SelectTags)).Methods(http.MethodGet)
-	word.Handle("/stat/write_stat", http.HandlerFunc(wHandler.WriteStat)).Methods(http.MethodPost)
-	word.Handle("/stat/get_stat/{word_id}", http.HandlerFunc(wHandler.GetStat)).Methods(http.MethodGet)
-	word.Handle("/words_with_tag", http.HandlerFunc(wHandler.SelectWordsWithTopic)).Methods(http.MethodPost)
-	word.Handle("/{word}", http.HandlerFunc(wHandler.GetWord)).Methods(http.MethodGet)
-	word.Handle("/create_word", http.HandlerFunc(wHandler.CreateWordHandler)).Methods(http.MethodPost)
-	word.Handle("/pronunciation/{word}", http.HandlerFunc(wHandler.UploadAudioHandler)).Methods(http.MethodPost)
-	tip.Handle("/upload_tip", http.HandlerFunc(wHandler.UploadTip)).Methods(http.MethodPost)
-	tip.Handle("/get_tip", http.HandlerFunc(wHandler.GetTip)).Methods(http.MethodPost)
+	word.Handle("/create_word", http.HandlerFunc(wordHandler.CreateWord)).Methods(http.MethodPost)
+	word.Handle("/words_with_topic", http.HandlerFunc(wordHandler.WordsWithTopicHandler)).Methods(http.MethodPost)
+	word.Handle("/{word}", http.HandlerFunc(wordHandler.GetWord)).Methods(http.MethodGet)
+	topic.Handle("/all_topics", http.HandlerFunc(statHandler.GetAllTopics)).Methods(http.MethodGet)
+	topic.Handle("/topic_progress", http.HandlerFunc(wordHandler.GetTopicProgressHandler)).Methods(http.MethodGet)
+	tip.Handle("/get_tip", http.HandlerFunc(wordHandler.GetTipHandler)).Methods(http.MethodPost)
+	tip.Handle("/upload_tip", http.HandlerFunc(wordHandler.UploadTipHandler)).Methods(http.MethodPost)
+	// tip := r.PathPrefix("/tip").Subrouter()
+	// word.Handle("/rand/word", http.HandlerFunc(wHandler.GetRandomWord)).Methods(http.MethodPost) TODO в последнюю очередь
+
+	/*
+		word.Handle("/get_tags", http.HandlerFunc(wHandler.SelectTags)).Methods(http.MethodGet)
+		word.Handle("/words_with_tag", http.HandlerFunc(wHandler.SelectWordsWithTopic)).Methods(http.MethodPost)
+
+		tip.Handle("/upload_tip", http.HandlerFunc(wHandler.UploadTip)).Methods(http.MethodPost)
+		tip.Handle("/get_tip", http.HandlerFunc(wHandler.GetTip)).Methods(http.MethodPost)
+	*/
 	srv := &http.Server{
 		Addr:              ":8080",
 		Handler:           r,
@@ -125,6 +137,5 @@ func main() {
 
 func pingPongHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	//w.Write([]byte("Hello World"))
 	fmt.Fprintln(w, "pong")
 }
