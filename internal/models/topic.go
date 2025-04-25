@@ -13,7 +13,7 @@ func (tl *TopicsList) Sanitize() {
 }
 
 type OneTopic struct {
-	TopicId   *int
+	TopicId   *int   `json:"topic_id,omitempty"`
 	Topic     string `json:"topic"`
 	AllWords  *int   `json:"all_words"`
 	TrueWords *int   `json:"true_words"`

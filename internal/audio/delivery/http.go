@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/TeaStealers-backend-sem4/internal/models"
 	"github.com/TeaStealers-backend-sem4/internal/stat"
 	"github.com/TeaStealers-backend-sem4/pkg/config"
@@ -33,12 +34,12 @@ func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, "max size file 5 mb")
 		return
 	}
-	h.logger.LogInfo(requestId, logger.DeliveryLayer, "TranslateAudio", "parsed multiform")
 
 	word := r.FormValue("word")
 	if word == "" {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "TranslateAudio", errors.New("no word"))
 		utils.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
 	}
 
 	file, head, err := r.FormFile("file")
@@ -55,6 +56,7 @@ func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, "wav and mp3 only")
 		return
 	}
+	h.logger.LogInfo(requestId, logger.DeliveryLayer, "TranslateAudio", "parsed multiform")
 
 	mlServiceURL := h.cfg.MlServer.TranscribeEndpoint
 	timeout := h.cfg.MlServer.Timeout
@@ -76,22 +78,25 @@ func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "TranslateAudio", errors.New("fail to read ml response"))
 		utils.WriteError(w, http.StatusInternalServerError, "fail to read ml response")
+		return
 	}
-
 	if mlAns.MlError != "" {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "TranslateAudio", errors.New(mlAns.MlError))
 		utils.WriteError(w, http.StatusInternalServerError, mlAns.MlError)
+		return
 	}
 
 	result, err := h.statUc.UpdateWordStat(r.Context(), word, mlAns.Transcription)
 	if err != nil {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "TranslateAudio", err)
 		utils.WriteError(w, http.StatusInternalServerError, "update stat error")
+		return
 	}
+	fmt.Printf("ml transcription %s", mlAns.Transcription)
 	wordRes := models.WordUserStat{}
 	wordRes.Word = word
+	wordRes.Transcription = mlAns.Transcription
 	wordRes.Progress = &result
-	wordRes.Transcription = mlAns.Transcription // транскрипция с мл
 
 	if err := utils.WriteResponse(w, http.StatusOK, wordRes); err != nil {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "TranslateAudio", err)

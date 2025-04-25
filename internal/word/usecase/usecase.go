@@ -69,20 +69,18 @@ func (uc *WordUsecase) GetWord(ctx context.Context, wordData *models.WordData) (
 	return gotWord, nil
 }
 
-/*
-func (uc *WordUsecase) GetRandomWord(ctx context.Context, wordTag string) (*models.WordData, error) {
-	requestId, ok := ctx.Value("requestId").(string)
-	if !ok {
-		requestId = uuid.NewV4().String()
-		ctx = context.WithValue(ctx, "requestId", requestId)
-		uc.logger.LogInfo(requestId, logger.UsecaseLayer, "GetRandomWord", "new reqId")
-	}
+func (uc *WordUsecase) GetRandomWord(ctx context.Context, wordTopic string) (*models.WordData, error) {
+	requestId := utils2.GetRequestIDFromCtx(ctx)
 	var gotWord *models.WordData
 	var err error
-	if wordTag == "" {
-		gotWord, err = uc.repo.GetRandomWord(ctx)
+	tx, err := uc.wordRepo.BeginTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if wordTopic == "" {
+		gotWord, err = uc.wordRepo.GetRandomWord(ctx, tx)
 	} else {
-		gotWord, err = uc.repo.GetRandomWordWithTag(ctx, wordTag)
+		gotWord, err = uc.wordRepo.GetRandomWordWithTag(ctx, tx, wordTopic)
 
 	}
 	if err != nil {
@@ -94,13 +92,9 @@ func (uc *WordUsecase) GetRandomWord(ctx context.Context, wordTag string) (*mode
 	return gotWord, nil
 }
 
-func (uc *WordUsecase) SelectTags(ctx context.Context) (*models.TagsList, error) {
-	gottags, err := uc.repo.SelectTags(ctx)
-	return gottags, err
-}
-
+/*
 func (uc *WordUsecase) SelectWordsWithTopic(ctx context.Context, tag string) (*[]models.WordData, error) {
-	gotwords, err := uc.repo.SelectWordsWithTopic(ctx, tag)
+	gotwords, err := uc.wordRepo.SelectWordsByTopicWithProgress(ctx, tag)
 	return gotwords, err
 }
 

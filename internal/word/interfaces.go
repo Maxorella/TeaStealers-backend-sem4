@@ -12,7 +12,7 @@ type WordUsecase interface {
 	GetTip(ctx context.Context, data *models.TipData) (*models.TipData, error)
 
 	// UploadLink(ctx context.Context, wordLink *models.WordData) error
-	// GetRandomWord(ctx context.Context, wordTag string) (*models.WordData, error)
+	GetRandomWord(ctx context.Context, wordTopic string) (*models.WordData, error)
 	// SelectTags(ctx context.Context) (*models.TopicsList, error)
 	// SelectWordsWithTopic(ctx context.Context, tag string) (*[]models.WordData, error)
 	// WriteStat(ctx context.Context, stat *models.WordUserStat) error

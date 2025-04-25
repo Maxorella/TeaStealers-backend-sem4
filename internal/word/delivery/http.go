@@ -318,31 +318,23 @@ func (h *WordHandler) GetTopicProgressHandler(w http.ResponseWriter, r *http.Req
 
 }
 
-/* TODO в последнюю очередь с redis
 func (h *WordHandler) GetRandomWord(w http.ResponseWriter, r *http.Request) {
-	requestId, ok := r.Context().Value("requestId").(string)
-	if !ok {
-		requestId = uuid.NewV4().String()
-	}
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
 
-	type Tags struct {
-		Tag string `json:"tag"`
-	}
-	tag := Tags{}
-	if err := utils2.ReadRequestData(r, &tag); err != nil {
+	topic := models.OneTopic{}
+	if err := utils2.ReadRequestData(r, &topic); err != nil {
 		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordHandler", err, http.StatusBadRequest)
 		utils2.WriteError(w, http.StatusBadRequest, "incorrect data format")
 		return
 	}
 
-	gotWord, err := h.uc.GetRandomWord(r.Context(), tag.Tag)
+	gotWord, err := h.ucWord.GetRandomWord(r.Context(), topic.Topic)
 	if err != nil {
 		utils2.WriteError(w, http.StatusInternalServerError, "error get word")
 		return
 	}
 
-	fileStorageClient := utils2.NewFileStorageClient("http://localhost:8080")
-	audioLink, err := fileStorageClient.GetFileLink(gotWord.AudioLink)
+	audioLink, err := h.minClient.GetFileLink(gotWord.AudioLink)
 	if err != nil {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "GetRandomWord", err)
 		utils2.WriteError(w, http.StatusInternalServerError, "failed to get link")
@@ -359,8 +351,6 @@ func (h *WordHandler) GetRandomWord(w http.ResponseWriter, r *http.Request) {
 	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetRandomWord")
 
 }
-
-*/
 
 /*
 func (h *WordHandler) SelectTags(w http.ResponseWriter, r *http.Request) {

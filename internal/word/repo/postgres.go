@@ -7,6 +7,7 @@ import (
 	"github.com/TeaStealers-backend-sem4/internal/models"
 	"github.com/TeaStealers-backend-sem4/pkg/logger"
 	utils2 "github.com/TeaStealers-backend-sem4/pkg/utils"
+	"github.com/satori/uuid"
 )
 
 type WordRepo struct {
@@ -62,61 +63,38 @@ func (r *WordRepo) GetWordByWord(ctx context.Context, word string) (*models.Word
 	return gotWordData, nil
 }
 
-/*
 func (r *WordRepo) GetRandomWord(ctx context.Context, tx models.Transaction) (*models.WordData, error) {
-	requestId, ok := ctx.Value("requestId").(string)
-	if !ok {
-		requestId = uuid.NewV4().String()
-		ctx = context.WithValue(ctx, "requestId", requestId)
-		r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetRandomWord", "new reqId")
-	}
+	requestId := utils2.GetRequestIDFromCtx(ctx)
 
 	res := r.db.QueryRow(SelectRandomWordSql)
 
 	wordBase := &models.WordData{}
-	var Link, Tags sql.NullString
-	if err := res.Scan(&wordBase.WordID, &wordBase.Word, &wordBase.Transcription, &Tags, &Link); err != nil {
+	if err := res.Scan(&wordBase.WordID, &wordBase.Word, &wordBase.Transcription, &wordBase.Topic, &wordBase.AudioLink); err != nil {
 		r.logger.LogError(requestId, logger.RepositoryLayer, "GetRandomWord", err)
 		return &models.WordData{}, err
-	}
-
-	if Link.Valid {
-		wordBase.AudioLink = Link.String
-	}
-	if Tags.Valid {
-		wordBase.Topic = Tags.String
 	}
 	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetRandomWord", "got word from base: "+wordBase.Word)
 	return wordBase, nil
 }
 
-func (r *WordRepo) GetRandomWordWithTag(ctx context.Context, tx models.Transaction, wordTag string) (*models.WordData, error) {
+func (r *WordRepo) GetRandomWordWithTag(ctx context.Context, tx models.Transaction, wordTopic string) (*models.WordData, error) {
 	requestId, ok := ctx.Value("requestId").(string)
 	if !ok {
 		requestId = uuid.NewV4().String()
 		ctx = context.WithValue(ctx, "requestId", requestId)
 		r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetRandomWord", "new reqId")
 	}
-	res := r.db.QueryRow(SelectRandomWordWithTagSql, wordTag)
+	res := r.db.QueryRow(SelectRandomWordWithTopicSql, wordTopic)
 
 	wordBase := &models.WordData{}
-	var Link, Tags sql.NullString
-	if err := res.Scan(&wordBase.WordID, &wordBase.Word, &wordBase.Transcription, &Tags, &Link); err != nil {
+	if err := res.Scan(&wordBase.WordID, &wordBase.Word, &wordBase.Transcription, &wordBase.Topic, &wordBase.AudioLink); err != nil {
 		r.logger.LogError(requestId, logger.RepositoryLayer, "GetRandomWord", err)
 		return &models.WordData{}, err
 	}
 
-	if Link.Valid {
-		wordBase.AudioLink = Link.String
-	}
-	if Tags.Valid {
-		wordBase.Topic = Tags.String
-	}
 	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetRandomWord", "got word from base: "+wordBase.Word)
 	return wordBase, nil
 }
-
-*/
 
 func (r *WordRepo) SelectWordsByTopicWithProgress(ctx context.Context, tx models.Transaction, topic string) (*[]models.WordData, error) {
 	requestId := utils2.GetRequestIDFromCtx(ctx)
@@ -134,7 +112,7 @@ func (r *WordRepo) SelectWordsByTopicWithProgress(ctx context.Context, tx models
 		var word models.WordData
 
 		if err := rows.Scan(
-			&word.WordID,
+			// &word.WordID,
 			&word.Word,
 			&word.Transcription,
 			&word.AudioLink,

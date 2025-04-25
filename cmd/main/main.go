@@ -94,8 +94,7 @@ func main() {
 	tip.Handle("/get_tip", http.HandlerFunc(wordHandler.GetTipHandler)).Methods(http.MethodPost)
 	tip.Handle("/upload_tip", http.HandlerFunc(wordHandler.UploadTipHandler)).Methods(http.MethodPost)
 	// tip := r.PathPrefix("/tip").Subrouter()
-	// word.Handle("/rand/word", http.HandlerFunc(wHandler.GetRandomWord)).Methods(http.MethodPost) TODO в последнюю очередь
-
+	word.Handle("/rand/word", http.HandlerFunc(wordHandler.GetRandomWord)).Methods(http.MethodPost)
 	/*
 		word.Handle("/get_tags", http.HandlerFunc(wHandler.SelectTags)).Methods(http.MethodGet)
 		word.Handle("/words_with_tag", http.HandlerFunc(wHandler.SelectWordsWithTopic)).Methods(http.MethodPost)

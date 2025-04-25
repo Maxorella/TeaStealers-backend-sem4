@@ -86,6 +86,7 @@ func (r *StatRepo) SelectAllTopics(ctx context.Context, tx models.Transaction) (
 			r.logger.LogError(requestId, logger.RepositoryLayer, "SelectAllTopics", err)
 			return nil, err
 		}
+		topic.TopicId = nil
 		topics.Topics = append(topics.Topics, topic)
 	}
 
@@ -157,9 +158,9 @@ func (r *StatRepo) GetTopicProgress(ctx context.Context, tx models.Transaction, 
 
 	// Обрабатываем случай, когда нет строк
 	if err == sql.ErrNoRows {
-		*gotTopic.AllWords = -1
-		*gotTopic.TrueWords = -1
-		return gotTopic, nil
+		//	*gotTopic.AllWords = -1
+		//	*gotTopic.TrueWords = -1
+		return gotTopic, errors.New("no rows get topic")
 	}
 
 	if err != nil {
