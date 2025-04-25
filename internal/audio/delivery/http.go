@@ -74,7 +74,7 @@ func (h *AudioHandler) TranslateAudio(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	mlAns := models.MlAnswer{}
-	err = utils.ReadResponseData(response, mlAns)
+	err = utils.ReadResponseData(response, &mlAns)
 	if err != nil {
 		h.logger.LogError(requestId, logger.DeliveryLayer, "TranslateAudio", errors.New("fail to read ml response"))
 		utils.WriteError(w, http.StatusInternalServerError, "fail to read ml response")

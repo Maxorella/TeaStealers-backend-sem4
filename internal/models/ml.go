@@ -3,8 +3,8 @@ package models
 import "html"
 
 type MlAnswer struct {
-	Transcription string `json:"transcription,omitempty"`
-	MlError       string `json:"error,omitempty"`
+	Transcription string `json:"transcription"`
+	MlError       string `json:"error"`
 }
 
 func (ml *MlAnswer) Sanitize() {
