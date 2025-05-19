@@ -3,10 +3,12 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/TeaStealers-backend-sem4/internal/models"
 	"github.com/TeaStealers-backend-sem4/pkg/logger"
 	utils2 "github.com/TeaStealers-backend-sem4/pkg/utils"
+	"github.com/lib/pq"
 	"github.com/satori/uuid"
 )
 
@@ -29,16 +31,153 @@ func (r *WordRepo) BeginTx(ctx context.Context) (models.Transaction, error) {
 	return tx, nil
 }
 
-func (r *WordRepo) CreateWord(ctx context.Context, tx models.Transaction, wordCreate *models.CreateWordData) (int, error) {
+func (r *WordRepo) CreateWordExercise(ctx context.Context, tx models.Transaction, wordCreate *models.CreateWordData) (int, error) {
 	requestId := utils2.GetRequestIDFromCtx(ctx)
 
+	// Преобразуем массивы в PostgreSQL массивы
+	wordsArray := pq.Array([]string{wordCreate.Word})
+	transcriptionsArray := pq.Array([]string{wordCreate.Transcription})
+	translationsArray := pq.Array([]string{wordCreate.Translation})
+	audioArray := pq.Array([]string{wordCreate.AudioLink}) // Создаем массив с одним элементом
+
 	var lastInsertID int
-	if err := tx.QueryRowContext(ctx, CreateWordSql, wordCreate.Word, wordCreate.Transcription, wordCreate.AudioLink, wordCreate.Topic).Scan(&lastInsertID); err != nil {
-		r.logger.LogError(requestId, logger.RepositoryLayer, "CreateWord", err)
-		return 0, err
+	err := tx.QueryRowContext(ctx, CreateWordExerciseSql,
+		wordCreate.Exercise, // Тип упражнения
+		wordsArray,
+		transcriptionsArray,
+		audioArray,
+		translationsArray,
+		wordCreate.ModuleId,
+	).Scan(&lastInsertID)
+
+	if err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "CreateWordExercise", err)
+		return 0, fmt.Errorf("failed to create word exercise: %w", err)
 	}
 
-	r.logger.LogInfo(requestId, logger.RepositoryLayer, "CreateWord", "")
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "CreateWordExercise", "word exercise created")
+	return lastInsertID, nil
+}
+
+func (r *WordRepo) CreatePhraseExercise(ctx context.Context, tx models.Transaction, phraseCreate *models.CreatePhraseData) (int, error) {
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+
+	// Валидация типа упражнения
+	validExercises := map[string]bool{
+		"pronounce":     true,
+		"completeChain": true,
+	}
+
+	if !validExercises[phraseCreate.Exercise] {
+		return 0, fmt.Errorf("invalid exercise type: %s", phraseCreate.Exercise)
+	}
+
+	// Для упражнения "completeChain" требуется цепочка слов
+	if phraseCreate.Exercise == "completeChain" && len(phraseCreate.Chain) == 0 {
+		return 0, errors.New("chain exercise requires at least one word in chain")
+	}
+
+	var lastInsertID int
+	err := tx.QueryRowContext(ctx, CreatePhraseExerciseSql,
+		phraseCreate.Exercise,
+		phraseCreate.Sentence,
+		phraseCreate.Translate,
+		phraseCreate.Transcription,
+		phraseCreate.AudioLink,
+		pq.Array(phraseCreate.Chain),
+		phraseCreate.ModuleId,
+	).Scan(&lastInsertID)
+
+	if err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "CreatePhraseExercise", err)
+		return 0, fmt.Errorf("failed to create phrase exercise: %w", err)
+	}
+
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "CreatePhraseExercise", "phrase exercise created")
+	return lastInsertID, nil
+}
+
+func (r *WordRepo) CreateOrUpdateExerciseProgress(
+	ctx context.Context,
+	tx models.Transaction,
+	progress *models.ExerciseProgress,
+) (int, error) {
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+
+	// Валидация типа упражнения
+	validTypes := map[string]bool{
+		"word":   true,
+		"phrase": true,
+	}
+	if !validTypes[progress.ExerciseType] {
+		return 0, fmt.Errorf("invalid exercise type: %s", progress.ExerciseType)
+	}
+
+	// Валидация статуса
+	validStatuses := map[string]bool{
+		"none":        true,
+		"in_progress": true,
+		"completed":   true,
+		"failed":      true,
+	}
+	if !validStatuses[progress.Status] {
+		return 0, fmt.Errorf("invalid status: %s", progress.Status)
+	}
+
+	var lastInsertID int
+	err := tx.QueryRowContext(
+		ctx,
+		UpsertExerciseProgressSql,
+		progress.UserID,
+		progress.ExerciseID,
+		progress.ExerciseType,
+		progress.Status,
+	).Scan(&lastInsertID)
+
+	if err != nil {
+		r.logger.LogError(
+			requestId,
+			logger.RepositoryLayer,
+			"CreateOrUpdateExerciseProgress",
+			err,
+		)
+		return 0, fmt.Errorf("failed to upsert exercise progress: %w", err)
+	}
+
+	r.logger.LogInfo(
+		requestId,
+		logger.RepositoryLayer,
+		"CreateOrUpdateExerciseProgress",
+		"exercise progress upserted successfully",
+	)
+	return lastInsertID, nil
+}
+
+func (r *WordRepo) CreateWordExerciseList(ctx context.Context, tx models.Transaction, wordCreate *models.CreateWordDataList) (int, error) {
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+
+	// Преобразуем массивы в PostgreSQL массивы
+	wordsArray := pq.Array(wordCreate.Word)
+	transcriptionsArray := pq.Array(wordCreate.Transcription)
+	translationsArray := pq.Array(wordCreate.Translation)
+	audioArray := pq.Array(wordCreate.AudioLink) // Создаем массив с одним элементом
+
+	var lastInsertID int
+	err := tx.QueryRowContext(ctx, CreateWordExerciseSql,
+		wordCreate.Exercise, // Тип упражнения
+		wordsArray,
+		transcriptionsArray,
+		audioArray,
+		translationsArray,
+		wordCreate.ModuleId,
+	).Scan(&lastInsertID)
+
+	if err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "CreateWordExercise", err)
+		return 0, fmt.Errorf("failed to create word exercise: %w", err)
+	}
+
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "CreateWordExercise", "word exercise created")
 	return lastInsertID, nil
 }
 

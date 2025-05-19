@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -72,6 +73,285 @@ func (h *WordHandler) GetWord(w http.ResponseWriter, r *http.Request) {
 	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetWord")
 
 }
+
+func (h *WordHandler) CreateWordExerciseHandler(w http.ResponseWriter, r *http.Request) {
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
+
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordExercise", err)
+		utils2.WriteError(w, http.StatusBadRequest, "max size file 5 mb")
+		return
+	}
+	h.logger.LogInfo(requestId, logger.DeliveryLayer, "CreateWordExercise", "parsed multipart form")
+
+	exercise := r.FormValue("exercise")
+	if exercise == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordExercise", errors.New("bad formValue"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+
+	moduleIdStr := r.FormValue("module_id")
+	if moduleIdStr == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordExercise", errors.New("bad formValue"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+	moduleId, err := strconv.Atoi(moduleIdStr)
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordExercise", errors.New("module_id not int"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+	}
+	words := r.FormValue("words")
+	if words == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordExercise", errors.New("bad formValue"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+	wordsList := utils2.ParseStringArray(words)
+
+	transcriptions := r.FormValue("transcriptions")
+	if transcriptions == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordExercise", errors.New("bad formValue"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+	transcriptionsList := utils2.ParseStringArray(transcriptions)
+
+	translations := r.FormValue("translations")
+	if translations == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordExercise", errors.New("bad formValue"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+
+	translationsList := utils2.ParseStringArray(translations)
+	gotId := models.IdStruct{}
+
+	switch exercise {
+	case "pronounce":
+		audioFile, audioHead, err := r.FormFile("audio")
+		if err != nil {
+			h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordExercise", err)
+			utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+			return
+		}
+		defer audioFile.Close()
+		allowedExtensions := []string{".wav", ".mp3"}
+		fileType := strings.ToLower(filepath.Ext(audioHead.Filename))
+		if !slices.Contains(allowedExtensions, fileType) {
+			utils2.WriteError(w, http.StatusBadRequest, "wav and mp3 only")
+			return
+		}
+
+		audioLink, err := h.minClient.UploadFile(audioFile, audioHead.Filename)
+		if err != nil {
+			h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordExercise", err)
+			utils2.WriteError(w, http.StatusInternalServerError, "failed to upload file")
+			return
+		}
+
+		wordData := models.CreateWordData{Exercise: exercise, ModuleId: &moduleId, Word: wordsList[0], Transcription: transcriptionsList[0], Translation: translationsList[0], AudioLink: audioLink}
+
+		id, err := h.ucWord.CreateWordExercise(r.Context(), &wordData)
+		if err != nil {
+			h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordExercise", err, http.StatusInternalServerError)
+			utils2.WriteError(w, http.StatusInternalServerError, "error create word")
+			return
+		}
+		gotId.Id = &id
+	case "pronounceFiew":
+		fallthrough
+	case "guessWord":
+		audioFiles := r.MultipartForm.File["audio"]
+
+		if len(audioFiles) != 2 {
+			utils2.WriteError(w, http.StatusBadRequest, "not 2 audio uploaded")
+			return
+		}
+
+		var audioLinks []string
+		allowedExtensions := []string{".wav", ".mp3"}
+
+		for _, fileHeader := range audioFiles {
+			file, err := fileHeader.Open()
+			if err != nil {
+				h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordExercise", err)
+				utils2.WriteError(w, http.StatusInternalServerError, "error opening file")
+				return
+			}
+			defer file.Close()
+
+			fileExt := strings.ToLower(filepath.Ext(fileHeader.Filename))
+			if !slices.Contains(allowedExtensions, fileExt) {
+				utils2.WriteError(w, http.StatusBadRequest, "only .wav and .mp3 allowed")
+				return
+			}
+
+			audioLink, err := h.minClient.UploadFile(file, fileHeader.Filename)
+			if err != nil {
+				h.logger.LogError(requestId, logger.DeliveryLayer, "CreateWordExercise", err)
+				utils2.WriteError(w, http.StatusInternalServerError, "failed to upload file")
+				return
+			}
+			audioLinks = append(audioLinks, audioLink)
+		}
+
+		wordData := models.CreateWordDataList{Exercise: exercise, ModuleId: &moduleId, Word: wordsList,
+			Transcription: transcriptionsList, Translation: translationsList, AudioLink: audioLinks}
+
+		id, err := h.ucWord.CreateWordExerciseList(r.Context(), &wordData)
+		if err != nil {
+			h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordExercise", err, http.StatusInternalServerError)
+			utils2.WriteError(w, http.StatusInternalServerError, "error create word")
+			return
+		}
+		gotId.Id = &id
+	default:
+		utils2.WriteError(w, http.StatusBadRequest, "no such exercise")
+		return
+	}
+
+	if err := utils2.WriteResponse(w, http.StatusCreated, gotId); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreateWordExercise", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "CreateWordExercise")
+	return
+}
+
+func (h *WordHandler) CreatePhraseExerciseHandler(w http.ResponseWriter, r *http.Request) {
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
+
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler", err)
+		utils2.WriteError(w, http.StatusBadRequest, "max size file 5 mb")
+		return
+	}
+	h.logger.LogInfo(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler", "parsed multipart form")
+
+	exercise := r.FormValue("exercise")
+	if exercise == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler", errors.New("bad formValue"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+
+	moduleIdStr := r.FormValue("module_id")
+	if moduleIdStr == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler", errors.New("bad formValue"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+	moduleId, err := strconv.Atoi(moduleIdStr)
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler", errors.New("module_id not int"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+	}
+
+	sentence := r.FormValue("sentence")
+	if sentence == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler", errors.New("bad formValue"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+
+	transcription := r.FormValue("transcription")
+	if transcription == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler", errors.New("bad formValue"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+
+	translate := r.FormValue("translate")
+	if translate == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler", errors.New("bad formValue"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+
+	chain := r.FormValue("chain")
+	if chain == "" {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler", errors.New("bad formValue"))
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+	chainList := utils2.ParseStringArray(chain)
+
+	audioFile, audioHead, err := r.FormFile("audio")
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler", err)
+		utils2.WriteError(w, http.StatusBadRequest, "bad data request")
+		return
+	}
+	defer audioFile.Close()
+	allowedExtensions := []string{".wav", ".mp3"}
+	fileType := strings.ToLower(filepath.Ext(audioHead.Filename))
+	if !slices.Contains(allowedExtensions, fileType) {
+		utils2.WriteError(w, http.StatusBadRequest, "wav and mp3 only")
+		return
+	}
+
+	audioLink, err := h.minClient.UploadFile(audioFile, audioHead.Filename)
+	if err != nil {
+		h.logger.LogError(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler", err)
+		utils2.WriteError(w, http.StatusInternalServerError, "failed to upload file")
+		return
+	}
+	gotId := models.IdStruct{}
+
+	phraseData := models.CreatePhraseData{Exercise: exercise, Sentence: sentence, Transcription: transcription,
+		ModuleId:  &moduleId,
+		AudioLink: audioLink, Translate: translate, Chain: chainList}
+
+	id, err := h.ucWord.CreatePhraseExercise(r.Context(), &phraseData)
+	if err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error create word")
+		return
+	}
+	gotId.Id = &id
+
+	if err := utils2.WriteResponse(w, http.StatusCreated, gotId); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "CreatePhraseExerciseHandler")
+	return
+}
+
+func (h *WordHandler) UpdateProgressHandler(w http.ResponseWriter, r *http.Request) {
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
+	userId := 1 //TODO user ID !!!!!!
+	progressData := models.ExerciseProgress{UserID: &userId}
+
+	if err := utils2.ReadRequestData(r, &progressData); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WordsWithTopicHandler", err, http.StatusBadRequest)
+		utils2.WriteError(w, http.StatusBadRequest, "incorrect data format")
+		return
+	}
+
+	_, err := h.ucWord.CreateUpdateProgress(r.Context(), &progressData)
+	if err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "UpdateProgressHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error create word")
+		return
+	}
+	if err := utils2.WriteResponse(w, http.StatusCreated, "Progress saved"); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "UpdateProgressHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "UpdateProgressHandler")
+	return
+}
+
+/*
 
 func (h *WordHandler) CreateWord(w http.ResponseWriter, r *http.Request) {
 
@@ -144,6 +424,7 @@ func (h *WordHandler) CreateWord(w http.ResponseWriter, r *http.Request) {
 	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "CreateWordHandler")
 	return
 }
+*/
 
 func (h *WordHandler) WordsWithTopicHandler(w http.ResponseWriter, r *http.Request) {
 

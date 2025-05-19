@@ -25,36 +25,120 @@ func NewWordUsecase(repoWord *repo.WordRepo, repoStat *statRep.StatRepo, logger 
 	}
 }
 
-func (uc *WordUsecase) CreateWord(ctx context.Context, wordCreateData *models.CreateWordData) (int, error) {
+func (uc *WordUsecase) CreateWordExercise(ctx context.Context, wordCreateData *models.CreateWordData) (int, error) {
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+	tx, err := uc.wordRepo.BeginTx(ctx)
+	if err != nil {
+		return 0, errors.New("error begin tx")
+	}
+	/*
+		_, err = uc.wordRepo.GetWordByWord(ctx, wordCreateData.Word)
+		if err == nil {
+			uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateWord", errors.New("word already exists"))
+			return 0, errors.New("word already exists")
+		}
+		uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", err.Error())
+	*/
+
+	wordId, err := uc.wordRepo.CreateWordExercise(ctx, tx, wordCreateData)
+	if err != nil {
+		tx.Rollback()
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateWord", err)
+		return 0, errors.New("failed to create word")
+	}
+	/*
+		err = uc.statRepo.InsertTopic(ctx, tx, wordCreateData.Topic)
+
+		if err != nil {
+			tx.Rollback()
+			return 0, errors.New("failed to create topic")
+		}
+
+	*/
+	tx.Commit()
+	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", fmt.Sprintf("created new word, id: %d", wordId))
+	return wordId, nil
+}
+
+func (uc *WordUsecase) CreateWordExerciseList(ctx context.Context, wordCreateData *models.CreateWordDataList) (int, error) {
 	requestId := utils2.GetRequestIDFromCtx(ctx)
 	tx, err := uc.wordRepo.BeginTx(ctx)
 	if err != nil {
 		return 0, errors.New("error begin tx")
 	}
 
-	_, err = uc.wordRepo.GetWordByWord(ctx, wordCreateData.Word)
-	if err == nil {
-		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateWord", errors.New("word already exists"))
-		return 0, errors.New("word already exists")
-	}
-	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", err.Error())
-
-	wordId, err := uc.wordRepo.CreateWord(ctx, tx, wordCreateData)
+	wordId, err := uc.wordRepo.CreateWordExerciseList(ctx, tx, wordCreateData)
 	if err != nil {
 		tx.Rollback()
 		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateWord", err)
 		return 0, errors.New("failed to create word")
 	}
+	tx.Commit()
+	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", fmt.Sprintf("created new word, id: %d", wordId))
+	return wordId, nil
+}
 
-	err = uc.statRepo.InsertTopic(ctx, tx, wordCreateData.Topic)
+func (uc *WordUsecase) CreatePhraseExercise(ctx context.Context, phraseCreateData *models.CreatePhraseData) (int, error) {
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+	tx, err := uc.wordRepo.BeginTx(ctx)
+	if err != nil {
+		return 0, errors.New("error begin tx")
+	}
 
+	wordId, err := uc.wordRepo.CreatePhraseExercise(ctx, tx, phraseCreateData)
 	if err != nil {
 		tx.Rollback()
-		return 0, errors.New("failed to create topic")
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateWord", err)
+		return 0, errors.New("failed to create word")
 	}
 	tx.Commit()
 	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateWord", fmt.Sprintf("created new word, id: %d", wordId))
 	return wordId, nil
+}
+
+func (uc *WordUsecase) CreateUpdateProgress(ctx context.Context, progress *models.ExerciseProgress) (int, error) {
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+
+	// Начинаем транзакцию
+	tx, err := uc.wordRepo.BeginTx(ctx)
+	if err != nil {
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateUpdateProgress",
+			fmt.Errorf("failed to begin transaction: %w", err))
+		return 0, errors.New("failed to start transaction")
+	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Валидация прогресса перед сохранением
+	if *progress.UserID == 0 || *progress.ExerciseID == 0 {
+		err = errors.New("invalid user_id or exercise_id")
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateUpdateProgress", err)
+		return 0, err
+	}
+
+	// Сохраняем/обновляем прогресс
+	progressID, err := uc.wordRepo.CreateOrUpdateExerciseProgress(ctx, tx, progress)
+	if err != nil {
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateUpdateProgress",
+			fmt.Errorf("failed to save progress: %w", err))
+		return 0, errors.New("failed to save progress")
+	}
+
+	// Фиксируем транзакцию
+	if err = tx.Commit(); err != nil {
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateUpdateProgress",
+			fmt.Errorf("failed to commit transaction: %w", err))
+		return 0, errors.New("failed to save progress")
+	}
+
+	uc.logger.LogInfo(requestId, logger.UsecaseLayer, "CreateUpdateProgress",
+		fmt.Sprintf("successfully saved progress, id: %d", progressID))
+
+	return progressID, nil
 }
 
 func (uc *WordUsecase) GetWord(ctx context.Context, wordData *models.WordData) (*models.WordData, error) {

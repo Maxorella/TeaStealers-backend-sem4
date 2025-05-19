@@ -7,7 +7,11 @@ import (
 
 type WordUsecase interface {
 	GetWord(ctx context.Context, wordData *models.WordData) (*models.WordData, error)
-	CreateWord(ctx context.Context, wordCreateData *models.CreateWordData) (int, error)
+	CreateWordExercise(ctx context.Context, wordCreateData *models.CreateWordData) (int, error)
+	CreateWordExerciseList(ctx context.Context, wordCreateData *models.CreateWordDataList) (int, error)
+	CreatePhraseExercise(ctx context.Context, phraseCreateData *models.CreatePhraseData) (int, error)
+	CreateUpdateProgress(ctx context.Context, progress *models.ExerciseProgress) (int, error)
+
 	UploadTip(ctx context.Context, data *models.TipData) error
 	GetTip(ctx context.Context, data *models.TipData) (*models.TipData, error)
 

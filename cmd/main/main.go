@@ -6,10 +6,14 @@ import (
 	"errors"
 	"fmt"
 	audioHl "github.com/TeaStealers-backend-sem4/internal/audio/delivery"
+	moduleH "github.com/TeaStealers-backend-sem4/internal/module/delivery"
+	moduleRep "github.com/TeaStealers-backend-sem4/internal/module/repo"
+	moduleUc "github.com/TeaStealers-backend-sem4/internal/module/usecase"
 	statHl "github.com/TeaStealers-backend-sem4/internal/stat/delivery"
 	statRep "github.com/TeaStealers-backend-sem4/internal/stat/repo"
 	statUc "github.com/TeaStealers-backend-sem4/internal/stat/usecase"
 	wordH "github.com/TeaStealers-backend-sem4/internal/word/delivery"
+
 	wordRep "github.com/TeaStealers-backend-sem4/internal/word/repo"
 	wordUc "github.com/TeaStealers-backend-sem4/internal/word/usecase"
 	"github.com/TeaStealers-backend-sem4/pkg/config"
@@ -80,13 +84,22 @@ func main() {
 	statHandler := statHl.NewStatHandler(statUsecase, cfg, logr, minioStorageClient)
 	wordHandler := wordH.NewWordHandler(wordUsecase, statUsecase, cfg, logr, minioStorageClient)
 
+	modulRep := moduleRep.NewRepository(db, logr)
+	modulUc := moduleUc.NewModuleUsecase(modulRep, logr)
+	modulHandler := moduleH.NewModuleHandler(modulUc, cfg, logr)
 	audio := r.PathPrefix("/audio").Subrouter()
 	audio.Handle("/translate_audio", http.HandlerFunc(audioHandler.TranslateAudio)).Methods(http.MethodPost, http.MethodOptions)
 
 	word := r.PathPrefix("/word").Subrouter()
 	topic := r.PathPrefix("/topic").Subrouter()
 	tip := r.PathPrefix("/tip").Subrouter()
-	word.Handle("/create_word", http.HandlerFunc(wordHandler.CreateWord)).Methods(http.MethodPost)
+	r.Handle("/create-word-module", http.HandlerFunc(modulHandler.CreateModuleWordHandler)).Methods(http.MethodPost)
+	r.Handle("/create-phrase-module", http.HandlerFunc(modulHandler.CreateModulePhraseHandler)).Methods(http.MethodPost)
+	r.Handle("/word-exercises", http.HandlerFunc(wordHandler.CreateWordExerciseHandler)).Methods(http.MethodPost)
+	r.Handle("/phrases-exercises", http.HandlerFunc(wordHandler.CreatePhraseExerciseHandler)).Methods(http.MethodPost)
+	r.Handle("/exercise-progress", http.HandlerFunc(wordHandler.UpdateProgressHandler)).Methods(http.MethodPost)
+
+	//word.Handle("/create_word", http.HandlerFunc(wordHandler.CreateWord)).Methods(http.MethodPost)
 	word.Handle("/words_with_topic", http.HandlerFunc(wordHandler.WordsWithTopicHandler)).Methods(http.MethodPost)
 	word.Handle("/{word}", http.HandlerFunc(wordHandler.GetWord)).Methods(http.MethodGet)
 	topic.Handle("/all_topics", http.HandlerFunc(statHandler.GetAllTopics)).Methods(http.MethodGet)

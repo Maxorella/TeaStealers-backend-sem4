@@ -1,6 +1,37 @@
 package repo
 
 const (
+	// node sql
+	CreateWordExerciseSql = `
+INSERT INTO word_exercises (
+    exercise_type,
+    words,
+    transcriptions,
+    audio,
+    translations,
+    module_id
+) VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id;
+`
+	CreatePhraseExerciseSql = `
+INSERT INTO phrase_exercises (
+    exercise_type,
+    sentence,
+    translate,
+    transcription,
+    audio,
+    chain,
+    module_id
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id;
+`
+	UpsertExerciseProgressSql = `
+        INSERT INTO exercise_progress (user_id, exercise_id, exercise_type, status)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (user_id, exercise_id, exercise_type)
+        DO UPDATE SET status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP
+        RETURNING id;
+    `
 	// new sql
 	SelectWordSql                 = `SELECT word_id, word, transcription, audio_link, topic from word_etalon WHERE word = $1 AND is_deleted = FALSE;`
 	CreateWordSql                 = `INSERT INTO word_etalon (word, transcription, audio_link, topic) VALUES ($1, $2, $3, $4) RETURNING word_id;`
