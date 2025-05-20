@@ -243,3 +243,23 @@ func (uc *WordUsecase) GetTip(ctx context.Context, data *models.TipData) (*model
 	gotTip, err := uc.wordRepo.GetTip(ctx, tx, data)
 	return gotTip, err
 }
+
+func (uc *WordUsecase) GetNextPhraseModule(ctx context.Context, userID string) (*models.ModuleCreate, error) {
+	module, err := uc.wordRepo.GetIncompletePhraseModule(ctx, userID)
+	if err != nil {
+		requestId := utils2.GetRequestIDFromCtx(ctx)
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "GetNextPhraseModule", err)
+		return nil, fmt.Errorf("failed to get next phrase module: %w", err)
+	}
+	return module, nil
+}
+
+func (uc *WordUsecase) GetNextWordModule(ctx context.Context, userID string) (*models.ModuleCreate, error) {
+	module, err := uc.wordRepo.GetIncompleteWordModule(ctx, userID)
+	if err != nil {
+		requestId := utils2.GetRequestIDFromCtx(ctx)
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "GetNextWordModule", err)
+		return nil, fmt.Errorf("failed to get next word module: %w", err)
+	}
+	return module, nil
+}

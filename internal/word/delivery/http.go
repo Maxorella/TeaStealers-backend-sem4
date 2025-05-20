@@ -736,6 +736,67 @@ func (h *WordHandler) GetTopicProgressHandler(w http.ResponseWriter, r *http.Req
 
 }
 
+func (h *WordHandler) GetCurrentModuleWordHandler(w http.ResponseWriter, r *http.Request) {
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
+	id := r.Context().Value(middleware.CookieName)
+	userId, ok := id.(string)
+	if !ok {
+		mod1 := models.ModuleCreate{ID: 1}
+		if err := utils2.WriteResponse(w, http.StatusOK, mod1); err != nil {
+			h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetCurrentModuleWordHandler", err, http.StatusInternalServerError)
+			utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
+			return
+		}
+		return
+	}
+
+	gotTopic, err := h.ucWord.GetNextWordModule(r.Context(), userId)
+	if err != nil {
+		utils2.WriteError(w, http.StatusInternalServerError, "error get topic progress")
+		return
+	}
+
+	if err := utils2.WriteResponse(w, http.StatusOK, gotTopic); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetTopicProgressHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetTopicProgressHandler")
+}
+
+func (h *WordHandler) GetCurrentModulePhraseHandler(w http.ResponseWriter, r *http.Request) {
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
+
+	id := r.Context().Value(middleware.CookieName)
+	userId, ok := id.(string)
+
+	if !ok {
+		mod1 := models.ModuleCreate{ID: 1}
+		if err := utils2.WriteResponse(w, http.StatusOK, mod1); err != nil {
+			h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetCurrentModuleWordHandler", err, http.StatusInternalServerError)
+			utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
+			return
+		}
+		return
+	}
+
+	gotModule, err := h.ucWord.GetNextWordModule(r.Context(), userId)
+	if err != nil {
+		utils2.WriteError(w, http.StatusInternalServerError, "error get topic progress")
+		return
+	}
+
+	if err := utils2.WriteResponse(w, http.StatusOK, gotModule); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetTopicProgressHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error writing response")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetTopicProgressHandler")
+
+}
+
 func (h *WordHandler) GetRandomWord(w http.ResponseWriter, r *http.Request) {
 	requestId := utils2.GetRequestIDFromCtx(r.Context())
 

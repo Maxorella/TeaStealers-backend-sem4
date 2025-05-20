@@ -484,3 +484,45 @@ func (r *WordRepo) GetPhraseModuleExercises(ctx context.Context, userID string, 
 
 	return &models.ExerciseList{Exercises: exercises}, nil
 }
+
+func (r *WordRepo) GetIncompletePhraseModule(ctx context.Context, userID string) (*models.ModuleCreate, error) {
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+
+	var module models.ModuleCreate
+
+	err := r.db.QueryRowContext(ctx, GetIncompletePhraseModuleSql, userID).Scan(&module.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetIncompletePhraseModule", "no incomplete modules found")
+			return nil, nil // Возвращаем nil, если нет незавершенных модулей
+		}
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetIncompletePhraseModule", err)
+		return nil, fmt.Errorf("failed to get incomplete phrase module: %w", err)
+	}
+
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetIncompletePhraseModule",
+		fmt.Sprintf("found incomplete phrase module ID: %d", module.ID))
+
+	return &module, nil
+}
+
+func (r *WordRepo) GetIncompleteWordModule(ctx context.Context, userID string) (*models.ModuleCreate, error) {
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+
+	var module models.ModuleCreate
+
+	err := r.db.QueryRowContext(ctx, GetIncompleteWordModuleSql, userID).Scan(&module.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetIncompleteWordModule", "no incomplete modules found")
+			return nil, nil // Возвращаем nil, если нет незавершенных модулей
+		}
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetIncompleteWordModule", err)
+		return nil, fmt.Errorf("failed to get incomplete word module: %w", err)
+	}
+
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetIncompleteWordModule",
+		fmt.Sprintf("found incomplete word module ID: %d", module.ID))
+
+	return &module, nil
+}

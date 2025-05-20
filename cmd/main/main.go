@@ -103,9 +103,12 @@ func main() {
 	r.Handle("/logout", middleware2.JwtMiddleware(http.HandlerFunc(autHandler.Logout), authRepo)).Methods(http.MethodGet, http.MethodOptions)
 	r.HandleFunc("/check_auth", autHandler.CheckAuth).Methods(http.MethodGet, http.MethodOptions)
 
-	word := r.PathPrefix("/word").Subrouter()
-	topic := r.PathPrefix("/topic").Subrouter()
-	tip := r.PathPrefix("/tip").Subrouter()
+	r.Handle("/current-word-module",
+		middleware2.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetCurrentModuleWordHandler), authRepo)).Methods(http.MethodGet)
+
+	r.Handle("/current-phrase-module",
+		middleware2.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetCurrentModulePhraseHandler), authRepo)).Methods(http.MethodGet)
+
 	r.Handle("/create-word-module", http.HandlerFunc(modulHandler.CreateModuleWordHandler)).Methods(http.MethodPost)
 	r.Handle("/create-phrase-module", http.HandlerFunc(modulHandler.CreateModulePhraseHandler)).Methods(http.MethodPost)
 	r.Handle("/word-exercises", http.HandlerFunc(wordHandler.CreateWordExerciseHandler)).Methods(http.MethodPost)
@@ -123,6 +126,9 @@ func main() {
 	r.Handle("/phrase-modules/{id}/exercises",
 		middleware2.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetPhraseModuleExercisesHandler), authRepo)).Methods(http.MethodGet)
 
+	word := r.PathPrefix("/word").Subrouter()
+	topic := r.PathPrefix("/topic").Subrouter()
+	tip := r.PathPrefix("/tip").Subrouter()
 	//	user.Handle("/me", middleware.JwtMiddleware(http.HandlerFunc(userHandler.GetCurUser), authRepo)).Methods(http.MethodGet, http.MethodOptions)
 
 	//word.Handle("/create_word", http.HandlerFunc(wordHandler.CreateWord)).Methods(http.MethodPost)

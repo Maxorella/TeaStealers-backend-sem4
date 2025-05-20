@@ -62,6 +62,7 @@ func JwtMiddlewareOptional(next http.Handler, repo auth.AuthRepo) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(CookieName)
 		if err != nil {
+			next.ServeHTTP(w, r)
 			return
 		}
 		token := cookie.Value

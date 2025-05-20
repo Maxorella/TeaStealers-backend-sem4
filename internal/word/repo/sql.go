@@ -1,6 +1,30 @@
 package repo
 
 const (
+	GetIncompletePhraseModuleSql = `
+        SELECT m.id
+        FROM phrase_modules m
+        JOIN phrase_exercises e ON e.module_id = m.id
+        LEFT JOIN exercise_progress p 
+            ON p.exercise_id = e.id AND p.exercise_type = 'phrase' AND p.user_id = $1
+        GROUP BY m.id
+        HAVING COUNT(*) FILTER (WHERE p.status = 'completed') < COUNT(*)
+        ORDER BY m.id
+        LIMIT 1
+    `
+
+	GetIncompleteWordModuleSql = `
+        SELECT m.id
+        FROM word_modules m
+        JOIN word_exercises e ON e.module_id = m.id
+        LEFT JOIN exercise_progress p 
+            ON p.exercise_id = e.id AND p.exercise_type = 'word' AND p.user_id = $1
+        GROUP BY m.id
+        HAVING COUNT(*) FILTER (WHERE p.status = 'completed') < COUNT(*)
+        ORDER BY m.id
+        LIMIT 1
+    `
+
 	GetWordModuleExercisesWithProgressSql = `
         SELECT e.id, e.exercise_type, e.words, e.transcriptions, e.audio, e.translations, e.module_id,
                COALESCE(p.status, 'none') AS status
