@@ -44,6 +44,7 @@ func (h *AuthHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	newUser.Token = token
 	http.SetCookie(w, jwt.TokenCookie(middleware.CookieName, token, exp))
 
 	if err = utils.WriteResponse(w, http.StatusCreated, newUser); err != nil {
@@ -75,7 +76,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, jwt.TokenCookie(middleware.CookieName, token, exp))
-
+	user.Token = token
 	if err := utils.WriteResponse(w, http.StatusOK, user); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 	}

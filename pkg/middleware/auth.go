@@ -57,3 +57,48 @@ func JwtMiddleware(next http.Handler, repo auth.AuthRepo) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+func JwtMiddlewareOptional(next http.Handler, repo auth.AuthRepo) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie(CookieName)
+		if err != nil {
+			return
+		}
+		token := cookie.Value
+		claims, err := jwt.ParseToken(token)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		timeExp, err := claims.Claims.GetExpirationTime()
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if timeExp.Before(time.Now()) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		id, level, err := jwt.ParseClaims(claims)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		levelCur, err := repo.GetUserLevelById(id)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if levelCur != level {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		r = r.WithContext(context.WithValue(r.Context(), CookieName, id))
+
+		next.ServeHTTP(w, r)
+	})
+}

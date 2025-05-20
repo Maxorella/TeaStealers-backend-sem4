@@ -274,6 +274,68 @@ func (r *WordRepo) SelectWordsByTopicWithProgress(ctx context.Context, tx models
 	return &words, nil
 }
 
+func (r *WordRepo) GetPhraseModules(ctx context.Context) (*models.ModuleList, error) {
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+
+	rows, err := r.db.QueryContext(ctx, SelectPhraseModulesSql)
+	if err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetPhraseModules", err)
+		return nil, fmt.Errorf("failed to get phrase modules: %w", err)
+	}
+	defer rows.Close()
+
+	var modules []models.ModuleCreate
+	for rows.Next() {
+		var module models.ModuleCreate
+		if err := rows.Scan(&module.ID, &module.Title); err != nil {
+			r.logger.LogError(requestId, logger.RepositoryLayer, "GetPhraseModules", err)
+			return nil, fmt.Errorf("failed to scan phrase module: %w", err)
+		}
+		modules = append(modules, module)
+	}
+
+	if err = rows.Err(); err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetPhraseModules", err)
+		return nil, fmt.Errorf("error after iterating phrase modules: %w", err)
+	}
+
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetPhraseModules",
+		fmt.Sprintf("retrieved %d phrase modules", len(modules)))
+
+	return &models.ModuleList{Modules: modules}, nil
+}
+
+func (r *WordRepo) GetWordModules(ctx context.Context) (*models.ModuleList, error) {
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+
+	rows, err := r.db.QueryContext(ctx, SelectWordModulesSql)
+	if err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetWordModules", err)
+		return nil, fmt.Errorf("failed to get word modules: %w", err)
+	}
+	defer rows.Close()
+
+	var modules []models.ModuleCreate
+	for rows.Next() {
+		var module models.ModuleCreate
+		if err := rows.Scan(&module.ID, &module.Title); err != nil {
+			r.logger.LogError(requestId, logger.RepositoryLayer, "GetWordModules", err)
+			return nil, fmt.Errorf("failed to scan word module: %w", err)
+		}
+		modules = append(modules, module)
+	}
+
+	if err = rows.Err(); err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetWordModules", err)
+		return nil, fmt.Errorf("error after iterating word modules: %w", err)
+	}
+
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetWordModules",
+		fmt.Sprintf("retrieved %d word modules", len(modules)))
+
+	return &models.ModuleList{Modules: modules}, nil
+}
+
 func (r *WordRepo) UploadTip(ctx context.Context, tx models.Transaction, data *models.TipData) error {
 	requestId := utils2.GetRequestIDFromCtx(ctx)
 
@@ -301,4 +363,124 @@ func (r *WordRepo) GetTip(ctx context.Context, tx models.Transaction, data *mode
 
 	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetTip", "got tip successfully")
 	return gotTip, nil
+}
+
+func (r *WordRepo) GetWordModuleExercises(ctx context.Context, userID string, moduleID int) (*models.ExerciseList, error) {
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+
+	var rows *sql.Rows
+	var err error
+
+	// Выбираем запрос в зависимости от наличия userID
+	if len(userID) > 0 {
+		rows, err = r.db.QueryContext(ctx, GetWordModuleExercisesWithProgressSql, userID, moduleID)
+	} else {
+		rows, err = r.db.QueryContext(ctx, GetWordModuleExercisesSql, moduleID)
+	}
+
+	if err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetWordModuleExercises", err)
+		return nil, fmt.Errorf("failed to query word exercises: %w", err)
+	}
+	defer rows.Close()
+
+	var exercises []models.Exercise
+	for rows.Next() {
+		var exercise models.Exercise
+		var words, transcriptions, audio, translations pq.StringArray
+
+		if err := rows.Scan(
+			&exercise.ID,
+			&exercise.ExerciseType,
+			&words,
+			&transcriptions,
+			&audio,
+			&translations,
+			&exercise.ModuleId,
+			&exercise.Status,
+		); err != nil {
+			r.logger.LogError(requestId, logger.RepositoryLayer, "GetWordModuleExercises", err)
+			return nil, fmt.Errorf("failed to scan word exercise: %w", err)
+		}
+
+		exercise.Words = []string(words)
+		exercise.Transcriptions = []string(transcriptions)
+		exercise.Audio = []string(audio)
+		exercise.Translations = []string(translations)
+
+		exercises = append(exercises, exercise)
+	}
+
+	if err = rows.Err(); err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetWordModuleExercises", err)
+		return nil, fmt.Errorf("error after iterating word exercises: %w", err)
+	}
+
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetWordModuleExercises",
+		fmt.Sprintf("retrieved %d exercises for word module %d", len(exercises), moduleID))
+
+	return &models.ExerciseList{Exercises: exercises}, nil
+}
+
+func (r *WordRepo) GetPhraseModuleExercises(ctx context.Context, userID string, moduleID int) (*models.ExerciseList, error) {
+	requestId := utils2.GetRequestIDFromCtx(ctx)
+
+	var rows *sql.Rows
+	var err error
+
+	if len(userID) > 0 {
+		rows, err = r.db.QueryContext(ctx, GetPhraseModuleExercisesWithProgressSql, userID, moduleID)
+	} else {
+		rows, err = r.db.QueryContext(ctx, GetPhraseModuleExercisesSql, moduleID)
+	}
+
+	if err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetPhraseModuleExercises", err)
+		return nil, fmt.Errorf("failed to query phrase exercises: %w", err)
+	}
+	defer rows.Close()
+
+	var exercises []models.Exercise
+	for rows.Next() {
+		var exercise models.Exercise
+		var sentence, translate, transcription, audio string
+		var chain pq.StringArray
+		var status string
+
+		// Сканируем во временные переменные
+		if err := rows.Scan(
+			&exercise.ID,
+			&exercise.ExerciseType,
+			&sentence,      // Теперь сканируем как string
+			&translate,     // string
+			&transcription, // string
+			&audio,         // string
+			&chain,
+			&exercise.ModuleId,
+			&status,
+		); err != nil {
+			r.logger.LogError(requestId, logger.RepositoryLayer, "GetPhraseModuleExercises", err)
+			return nil, fmt.Errorf("failed to scan phrase exercise: %w", err)
+		}
+
+		// Заполняем структуру Exercise
+		exercise.Words = []string{sentence}
+		exercise.Translations = []string{translate}
+		exercise.Transcriptions = []string{transcription}
+		exercise.Audio = []string{audio}
+		exercise.Chain = []string(chain)
+		exercise.Status = status
+
+		exercises = append(exercises, exercise)
+	}
+
+	if err = rows.Err(); err != nil {
+		r.logger.LogError(requestId, logger.RepositoryLayer, "GetPhraseModuleExercises", err)
+		return nil, fmt.Errorf("error after iterating phrase exercises: %w", err)
+	}
+
+	r.logger.LogInfo(requestId, logger.RepositoryLayer, "GetPhraseModuleExercises",
+		fmt.Sprintf("retrieved %d exercises for phrase module %d", len(exercises), moduleID))
+
+	return &models.ExerciseList{Exercises: exercises}, nil
 }

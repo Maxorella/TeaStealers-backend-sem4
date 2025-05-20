@@ -1,6 +1,9 @@
 package models
 
-import "html"
+import (
+	"github.com/satori/uuid"
+	"html"
+)
 
 type CreateWordData struct {
 	Exercise      string `json:"exercise"`
@@ -31,10 +34,10 @@ type CreatePhraseData struct {
 }
 
 type ExerciseProgress struct {
-	UserID       *int   `json:"user_id"`
-	ExerciseID   *int   `json:"exercise_id"`
-	ExerciseType string `json:"exercise_type"`
-	Status       string `json:"status"`
+	UserID       uuid.UUID `json:"-"`
+	ExerciseID   *int      `json:"exercise_id"`
+	ExerciseType string    `json:"exercise_type"`
+	Status       string    `json:"status"`
 }
 
 type IdStruct struct {
@@ -61,4 +64,19 @@ func (wd *WordData) Sanitize() {
 	wd.Topic = html.EscapeString(wd.Topic)
 	wd.Transcription = html.EscapeString(wd.Transcription)
 	wd.AudioLink = html.EscapeString(wd.AudioLink)
+}
+
+type Exercise struct {
+	ID             int      `json:"id"`
+	ExerciseType   string   `json:"exercise_type"`
+	Words          []string `json:"words"`          // Для фразовых упражнений содержит sentence
+	Translations   []string `json:"translations"`   // Для фразовых упражнений содержит translate
+	Transcriptions []string `json:"transcriptions"` // Для фразовых упражнений содержит transcription
+	Audio          []string `json:"audio"`
+	Chain          []string `json:"chain,omitempty"`
+	ModuleId       int      `json:"module_id"`
+	Status         string   `json:"status"`
+}
+type ExerciseList struct {
+	Exercises []Exercise `json:"exercises"`
 }

@@ -7,8 +7,10 @@ import (
 	"github.com/TeaStealers-backend-sem4/internal/word"
 	"github.com/TeaStealers-backend-sem4/pkg/config"
 	"github.com/TeaStealers-backend-sem4/pkg/logger"
+	"github.com/TeaStealers-backend-sem4/pkg/middleware"
 	utils2 "github.com/TeaStealers-backend-sem4/pkg/utils"
 	"github.com/gorilla/mux"
+	"github.com/satori/uuid"
 	"net/http"
 	"path/filepath"
 	"slices"
@@ -326,8 +328,14 @@ func (h *WordHandler) CreatePhraseExerciseHandler(w http.ResponseWriter, r *http
 
 func (h *WordHandler) UpdateProgressHandler(w http.ResponseWriter, r *http.Request) {
 	requestId := utils2.GetRequestIDFromCtx(r.Context())
-	userId := 1 //TODO user ID !!!!!!
-	progressData := models.ExerciseProgress{UserID: &userId}
+	id := r.Context().Value(middleware.CookieName)
+	UUID, ok := id.(uuid.UUID)
+	if !ok {
+		utils2.WriteError(w, http.StatusBadRequest, "incorrect id")
+		return
+	}
+
+	progressData := models.ExerciseProgress{UserID: UUID}
 
 	if err := utils2.ReadRequestData(r, &progressData); err != nil {
 		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WordsWithTopicHandler", err, http.StatusBadRequest)
@@ -341,6 +349,7 @@ func (h *WordHandler) UpdateProgressHandler(w http.ResponseWriter, r *http.Reque
 		utils2.WriteError(w, http.StatusInternalServerError, "error create word")
 		return
 	}
+
 	if err := utils2.WriteResponse(w, http.StatusCreated, "Progress saved"); err != nil {
 		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "UpdateProgressHandler", err, http.StatusInternalServerError)
 		utils2.WriteError(w, http.StatusInternalServerError, "Internal server error")
@@ -348,6 +357,134 @@ func (h *WordHandler) UpdateProgressHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "UpdateProgressHandler")
+	return
+}
+
+func (h *WordHandler) WordModulesHandler(w http.ResponseWriter, r *http.Request) {
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
+
+	gotModules, err := h.ucWord.GetWordModules(r.Context())
+	if err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WordModulesHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error create word")
+		return
+	}
+
+	if err := utils2.WriteResponse(w, http.StatusCreated, gotModules); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WordModulesHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "WordModulesHandler")
+	return
+}
+
+func (h *WordHandler) PhraseModulesHandler(w http.ResponseWriter, r *http.Request) {
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
+
+	gotModules, err := h.ucWord.GetPhraseModules(r.Context())
+	if err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WordModulesHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error create word")
+		return
+	}
+
+	if err := utils2.WriteResponse(w, http.StatusCreated, gotModules); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "WordModulesHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "WordModulesHandler")
+	return
+}
+
+func (h *WordHandler) GetWordModuleExercisesHandler(w http.ResponseWriter, r *http.Request) {
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
+
+	// Извлекаем ID модуля из параметров маршрута
+	vars := mux.Vars(r)
+	moduleIDStr := vars["id"]
+
+	// Конвертируем строку в число
+	moduleID, err := strconv.Atoi(moduleIDStr)
+	if err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetWordModuleExercisesHandler", err, http.StatusBadRequest)
+		utils2.WriteError(w, http.StatusBadRequest, "invalid module ID format")
+		return
+	}
+
+	// Проверяем, что ID положительный
+	if moduleID <= 0 {
+		utils2.WriteError(w, http.StatusBadRequest, "module ID must be positive")
+		return
+	}
+	id := r.Context().Value(middleware.CookieName)
+	userId, ok := id.(string)
+	if !ok {
+		userId = ""
+	}
+
+	gotModules, err := h.ucWord.GetWordModuleExercises(r.Context(), userId, moduleID)
+
+	if err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetWordModuleExercisesHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error create word")
+		return
+	}
+
+	if err := utils2.WriteResponse(w, http.StatusCreated, gotModules); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetWordModuleExercisesHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetWordModuleExercisesHandler")
+	return
+}
+
+func (h *WordHandler) GetPhraseModuleExercisesHandler(w http.ResponseWriter, r *http.Request) {
+	requestId := utils2.GetRequestIDFromCtx(r.Context())
+
+	// Извлекаем ID модуля из параметров маршрута
+	vars := mux.Vars(r)
+	moduleIDStr := vars["id"]
+
+	// Конвертируем строку в число
+	moduleID, err := strconv.Atoi(moduleIDStr)
+	if err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetPhraseModuleExercisesHandler", err, http.StatusBadRequest)
+		utils2.WriteError(w, http.StatusBadRequest, "invalid module ID format")
+		return
+	}
+
+	// Проверяем, что ID положительный
+	if moduleID <= 0 {
+		utils2.WriteError(w, http.StatusBadRequest, "module ID must be positive")
+		return
+	}
+
+	id := r.Context().Value(middleware.CookieName)
+	userId, ok := id.(string)
+	if !ok {
+		userId = ""
+	}
+
+	gotModules, err := h.ucWord.GetPhraseModuleExercises(r.Context(), userId, moduleID)
+	if err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetPhraseModuleExercisesHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "error create word")
+		return
+	}
+
+	if err := utils2.WriteResponse(w, http.StatusCreated, gotModules); err != nil {
+		h.logger.LogErrorResponse(requestId, logger.DeliveryLayer, "GetPhraseModuleExercisesHandler", err, http.StatusInternalServerError)
+		utils2.WriteError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	h.logger.LogSuccessResponse(requestId, logger.DeliveryLayer, "GetPhraseModuleExercisesHandler")
 	return
 }
 

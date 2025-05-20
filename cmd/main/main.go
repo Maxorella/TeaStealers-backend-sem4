@@ -110,9 +110,19 @@ func main() {
 	r.Handle("/create-phrase-module", http.HandlerFunc(modulHandler.CreateModulePhraseHandler)).Methods(http.MethodPost)
 	r.Handle("/word-exercises", http.HandlerFunc(wordHandler.CreateWordExerciseHandler)).Methods(http.MethodPost)
 	r.Handle("/phrases-exercises", http.HandlerFunc(wordHandler.CreatePhraseExerciseHandler)).Methods(http.MethodPost)
-	r.Handle("/exercise-progress", http.HandlerFunc(wordHandler.UpdateProgressHandler)).Methods(http.MethodPost)
-	r.Handle("/register", http.HandlerFunc(wordHandler.UpdateProgressHandler)).Methods(http.MethodPost)
-	r.Handle("/login", http.HandlerFunc(wordHandler.UpdateProgressHandler)).Methods(http.MethodPost)
+
+	r.Handle("/exercise-progress",
+		middleware2.JwtMiddleware(http.HandlerFunc(wordHandler.UpdateProgressHandler), authRepo)).Methods(http.MethodPost)
+
+	r.Handle("/word-modules", http.HandlerFunc(wordHandler.WordModulesHandler)).Methods(http.MethodGet)
+	r.Handle("/phrase-modules", http.HandlerFunc(wordHandler.PhraseModulesHandler)).Methods(http.MethodGet)
+
+	r.Handle("/word-modules/{id}/exercises",
+		middleware2.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetWordModuleExercisesHandler), authRepo)).Methods(http.MethodGet)
+
+	r.Handle("/phrase-modules/{id}/exercises",
+		middleware2.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetPhraseModuleExercisesHandler), authRepo)).Methods(http.MethodGet)
+
 	//	user.Handle("/me", middleware.JwtMiddleware(http.HandlerFunc(userHandler.GetCurUser), authRepo)).Methods(http.MethodGet, http.MethodOptions)
 
 	//word.Handle("/create_word", http.HandlerFunc(wordHandler.CreateWord)).Methods(http.MethodPost)

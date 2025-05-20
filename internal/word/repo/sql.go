@@ -1,7 +1,53 @@
 package repo
 
 const (
+	GetWordModuleExercisesWithProgressSql = `
+        SELECT e.id, e.exercise_type, e.words, e.transcriptions, e.audio, e.translations, e.module_id,
+               COALESCE(p.status, 'none') AS status
+        FROM word_exercises e
+        LEFT JOIN exercise_progress p 
+            ON p.exercise_id = e.id AND p.exercise_type = 'word' AND p.user_id = $1
+        WHERE e.module_id = $2
+        ORDER BY e.id
+    `
+
+	GetWordModuleExercisesSql = `
+        SELECT id, exercise_type, words, transcriptions, audio, translations, module_id, 'none' AS status
+        FROM word_exercises
+        WHERE module_id = $1
+        ORDER BY id
+    `
+
+	GetPhraseModuleExercisesWithProgressSql = `
+        SELECT e.id, e.exercise_type, e.sentence, e.translate, e.transcription, e.audio, e.chain, e.module_id,
+               COALESCE(p.status, 'none') AS status
+        FROM phrase_exercises e
+        LEFT JOIN exercise_progress p 
+            ON p.exercise_id = e.id AND p.exercise_type = 'phrase' AND p.user_id = $1
+        WHERE e.module_id = $2
+        ORDER BY e.id
+    `
+
+	GetPhraseModuleExercisesSql = `
+        SELECT id, exercise_type, sentence, translate, transcription, audio, chain, module_id, 'none' AS status
+        FROM phrase_exercises
+        WHERE module_id = $1
+        ORDER BY id
+    `
+
 	// node sql
+	SelectPhraseModulesSql = `
+        SELECT id, title 
+        FROM phrase_modules 
+        ORDER BY id
+    `
+
+	SelectWordModulesSql = `
+        SELECT id, title 
+        FROM word_modules 
+        ORDER BY id
+    `
+
 	CreateWordExerciseSql = `
 INSERT INTO word_exercises (
     exercise_type,

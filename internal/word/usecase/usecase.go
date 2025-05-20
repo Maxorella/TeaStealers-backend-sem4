@@ -114,11 +114,14 @@ func (uc *WordUsecase) CreateUpdateProgress(ctx context.Context, progress *model
 	}()
 
 	// Валидация прогресса перед сохранением
-	if *progress.UserID == 0 || *progress.ExerciseID == 0 {
-		err = errors.New("invalid user_id or exercise_id")
-		uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateUpdateProgress", err)
-		return 0, err
-	}
+	/*
+		if  *progress.ExerciseID == 0 {
+			err = errors.New("exercise_id")
+			uc.logger.LogError(requestId, logger.UsecaseLayer, "CreateUpdateProgress", err)
+			return 0, err
+		}
+
+	*/
 
 	// Сохраняем/обновляем прогресс
 	progressID, err := uc.wordRepo.CreateOrUpdateExerciseProgress(ctx, tx, progress)
@@ -177,12 +180,51 @@ func (uc *WordUsecase) GetRandomWord(ctx context.Context, wordTopic string) (*mo
 }
 
 /*
-func (uc *WordUsecase) SelectWordsWithTopic(ctx context.Context, tag string) (*[]models.WordData, error) {
-	gotwords, err := uc.wordRepo.SelectWordsByTopicWithProgress(ctx, tag)
-	return gotwords, err
+	func (uc *WordUsecase) SelectWordsWithTopic(ctx context.Context, tag string) (*[]models.WordData, error) {
+		gotwords, err := uc.wordRepo.SelectWordsByTopicWithProgress(ctx, tag)
+		return gotwords, err
+	}
+*/
+func (uc *WordUsecase) GetPhraseModules(ctx context.Context) (*models.ModuleList, error) {
+	modules, err := uc.wordRepo.GetPhraseModules(ctx)
+	if err != nil {
+		requestId := utils2.GetRequestIDFromCtx(ctx)
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "GetPhraseModules", err)
+		return nil, fmt.Errorf("failed to get phrase modules: %w", err)
+	}
+	return modules, nil
 }
 
-*/
+// GetWordModules возвращает список модулей для слов
+func (uc *WordUsecase) GetWordModules(ctx context.Context) (*models.ModuleList, error) {
+	modules, err := uc.wordRepo.GetWordModules(ctx)
+	if err != nil {
+		requestId := utils2.GetRequestIDFromCtx(ctx)
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "GetWordModules", err)
+		return nil, fmt.Errorf("failed to get word modules: %w", err)
+	}
+	return modules, nil
+}
+
+func (uc *WordUsecase) GetWordModuleExercises(ctx context.Context, userID string, moduleId int) (*models.ExerciseList, error) {
+	modules, err := uc.wordRepo.GetWordModuleExercises(ctx, userID, moduleId)
+	if err != nil {
+		requestId := utils2.GetRequestIDFromCtx(ctx)
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "GetWordModuleExercises", err)
+		return nil, fmt.Errorf("failed to  modules: %w", err)
+	}
+	return modules, nil
+}
+
+func (uc *WordUsecase) GetPhraseModuleExercises(ctx context.Context, userID string, moduleId int) (*models.ExerciseList, error) {
+	modules, err := uc.wordRepo.GetPhraseModuleExercises(ctx, userID, moduleId)
+	if err != nil {
+		requestId := utils2.GetRequestIDFromCtx(ctx)
+		uc.logger.LogError(requestId, logger.UsecaseLayer, "GetWordModuleExercises", err)
+		return nil, fmt.Errorf("failed to  modules: %w", err)
+	}
+	return modules, nil
+}
 
 func (uc *WordUsecase) UploadTip(ctx context.Context, data *models.TipData) error {
 	tx, err := uc.wordRepo.BeginTx(ctx)

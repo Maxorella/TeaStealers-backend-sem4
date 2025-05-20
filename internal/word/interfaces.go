@@ -12,6 +12,13 @@ type WordUsecase interface {
 	CreatePhraseExercise(ctx context.Context, phraseCreateData *models.CreatePhraseData) (int, error)
 	CreateUpdateProgress(ctx context.Context, progress *models.ExerciseProgress) (int, error)
 
+	GetPhraseModules(ctx context.Context) (*models.ModuleList, error)
+
+	GetWordModuleExercises(ctx context.Context, userID string, moduleId int) (*models.ExerciseList, error)
+	GetPhraseModuleExercises(ctx context.Context, userID string, moduleId int) (*models.ExerciseList, error)
+
+	GetWordModules(ctx context.Context) (*models.ModuleList, error)
+
 	UploadTip(ctx context.Context, data *models.TipData) error
 	GetTip(ctx context.Context, data *models.TipData) (*models.TipData, error)
 

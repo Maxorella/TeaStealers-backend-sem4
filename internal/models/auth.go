@@ -23,4 +23,5 @@ type User struct {
 	LevelUpdate  int       `json:"-"`
 	Email        string    `json:"email"`
 	IsDeleted    bool      `json:"-"`
+	Token        string    `json:"token,omitempty"`
 }
