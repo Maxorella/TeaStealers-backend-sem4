@@ -1,6 +1,10 @@
 package utils
 
-import "strings"
+import (
+	"crypto/sha1"
+	"encoding/hex"
+	"strings"
+)
 
 func ParseStringArray(input string) []string {
 	// Удаляем квадратные скобки
@@ -22,4 +26,11 @@ func ParseStringArray(input string) []string {
 	}
 
 	return result
+}
+
+// GenerateHashString generate hash string
+func GenerateHashString(s string) string {
+	h := sha1.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
 }

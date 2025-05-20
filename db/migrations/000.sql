@@ -21,11 +21,13 @@ CREATE TYPE phrase_exercise_type AS ENUM (
     'completeChain'
 );
 
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL,
-    email VARCHAR(50) NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS users (
+                                     id UUID NOT NULL PRIMARY KEY,
+                                     passwordHash TEXT CONSTRAINT passwordHash_length CHECK ( char_length(passwordHash) <= 40) NOT NULL,
+                                     levelUpdate INTEGER NOT NULL DEFAULT 1,
+                                     email TEXT NOT NULL UNIQUE,
+                                     dateCreation TIMESTAMP NOT NULL DEFAULT NOW(),
+                                     isDeleted BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- Затем таблицы модулей (они нужны для связей)
@@ -64,7 +66,7 @@ CREATE TABLE phrase_exercises (
 -- И наконец таблица прогресса (зависит от всех предыдущих)
 CREATE TABLE exercise_progress (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     exercise_id INTEGER NOT NULL,
     exercise_type VARCHAR(10) NOT NULL,  -- "word" или "phrase"
     status VARCHAR(20) NOT NULL DEFAULT 'none',
@@ -78,3 +80,12 @@ CREATE TABLE IF NOT EXISTS word_tip(
     tip_audio_link TEXT,
     tip_video_link TEXT
 );
+
+--
+--CREATE TABLE users (
+--                       id SERIAL PRIMARY KEY,
+--                       name VARCHAR(50) NOT NULL,
+--                       email VARCHAR(50) NOT NULL UNIQUE,
+--                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+--);
+

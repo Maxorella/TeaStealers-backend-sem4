@@ -22,6 +22,10 @@ import (
 	minioS "github.com/TeaStealers-backend-sem4/pkg/minio"
 	minioH "github.com/TeaStealers-backend-sem4/pkg/minio/delivery"
 	utils2 "github.com/TeaStealers-backend-sem4/pkg/utils"
+
+	authH "github.com/TeaStealers-backend-sem4/internal/auth/delivery"
+	authR "github.com/TeaStealers-backend-sem4/internal/auth/repo"
+	authUc "github.com/TeaStealers-backend-sem4/internal/auth/usecase"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -90,6 +94,15 @@ func main() {
 	audio := r.PathPrefix("/audio").Subrouter()
 	audio.Handle("/translate_audio", http.HandlerFunc(audioHandler.TranslateAudio)).Methods(http.MethodPost, http.MethodOptions)
 
+	authRepo := authR.NewRepository(db)
+	authUsecase := authUc.NewAuthUsecase(authRepo)
+	autHandler := authH.NewAuthHandler(authUsecase)
+
+	r.HandleFunc("/register", autHandler.SignUp).Methods(http.MethodPost, http.MethodOptions)
+	r.HandleFunc("/login", autHandler.Login).Methods(http.MethodPost, http.MethodOptions)
+	r.Handle("/logout", middleware2.JwtMiddleware(http.HandlerFunc(autHandler.Logout), authRepo)).Methods(http.MethodGet, http.MethodOptions)
+	r.HandleFunc("/check_auth", autHandler.CheckAuth).Methods(http.MethodGet, http.MethodOptions)
+
 	word := r.PathPrefix("/word").Subrouter()
 	topic := r.PathPrefix("/topic").Subrouter()
 	tip := r.PathPrefix("/tip").Subrouter()
@@ -98,6 +111,9 @@ func main() {
 	r.Handle("/word-exercises", http.HandlerFunc(wordHandler.CreateWordExerciseHandler)).Methods(http.MethodPost)
 	r.Handle("/phrases-exercises", http.HandlerFunc(wordHandler.CreatePhraseExerciseHandler)).Methods(http.MethodPost)
 	r.Handle("/exercise-progress", http.HandlerFunc(wordHandler.UpdateProgressHandler)).Methods(http.MethodPost)
+	r.Handle("/register", http.HandlerFunc(wordHandler.UpdateProgressHandler)).Methods(http.MethodPost)
+	r.Handle("/login", http.HandlerFunc(wordHandler.UpdateProgressHandler)).Methods(http.MethodPost)
+	//	user.Handle("/me", middleware.JwtMiddleware(http.HandlerFunc(userHandler.GetCurUser), authRepo)).Methods(http.MethodGet, http.MethodOptions)
 
 	//word.Handle("/create_word", http.HandlerFunc(wordHandler.CreateWord)).Methods(http.MethodPost)
 	word.Handle("/words_with_topic", http.HandlerFunc(wordHandler.WordsWithTopicHandler)).Methods(http.MethodPost)
