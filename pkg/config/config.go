@@ -41,10 +41,13 @@ type MinioClient struct {
 }
 
 type MlService struct {
-	Address            string        `env:"ML_ADDRESS" env-default:"178.57.232.224"`
-	Port               string        `env:"ML_PORT" env-default:"5000"`
-	Timeout            time.Duration `env:"ML_TIMEOUT" env-default:"10s"`
-	TranscribeEndpoint string        `env:"ML_ENDPOINT"`
+	Address                  string        `env:"ML_ADDRESS" env-default:"178.57.232.224"`
+	Port                     string        `env:"ML_PORT" env-default:"5000"`
+	Timeout                  time.Duration `env:"ML_TIMEOUT" env-default:"10s"`
+	TranscribeWordEndpoint   string        `env:"ML_ENDPOINT_WORD"`
+	TranscribePhraseEndpoint string        `env:"ML_ENDPOINT_PHRASE"`
+	HelpTextEndpoint         string        `env:"ML_ENDPOINT_HELPTEXT"`
+	DialogEndpoint           string        `env:"ML_ENDPOINT_DIALOG"`
 }
 
 func MustLoad() *Config {

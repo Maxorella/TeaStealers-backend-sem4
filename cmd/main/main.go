@@ -91,8 +91,7 @@ func main() {
 	modulRep := moduleRep.NewRepository(db, logr)
 	modulUc := moduleUc.NewModuleUsecase(modulRep, logr)
 	modulHandler := moduleH.NewModuleHandler(modulUc, cfg, logr)
-	audio := r.PathPrefix("/audio").Subrouter()
-	audio.Handle("/translate_audio", http.HandlerFunc(audioHandler.TranslateAudio)).Methods(http.MethodPost, http.MethodOptions)
+	// audio := r.PathPrefix("/audio").Subrouter()
 
 	authRepo := authR.NewRepository(db)
 	authUsecase := authUc.NewAuthUsecase(authRepo)
@@ -125,6 +124,9 @@ func main() {
 
 	r.Handle("/phrase-modules/{id}/exercises",
 		middleware2.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetPhraseModuleExercisesHandler), authRepo)).Methods(http.MethodGet)
+
+	r.Handle("/transcribe-word", http.HandlerFunc(audioHandler.TranscribeWordHandler)).Methods(http.MethodPost, http.MethodOptions)
+	r.Handle("/transcribe-phrase", http.HandlerFunc(audioHandler.TranscribePhraseHandler)).Methods(http.MethodPost, http.MethodOptions)
 
 	word := r.PathPrefix("/word").Subrouter()
 	topic := r.PathPrefix("/topic").Subrouter()
