@@ -21,7 +21,7 @@ FROM scratch AS runner
 WORKDIR /ouzi/
 
 # Copy the built binary from the builder stage
-COPY --from=builder /ouzi/.bin /ouzi/.bin
+COPY --from=builder  /ouzi/.bin /ouzi/.bin
 
 # Copy timezone data
 COPY --from=builder /usr/local/go/lib/time/zoneinfo.zip /
