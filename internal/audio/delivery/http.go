@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/TeaStealers-backend-sem4/internal/models"
-	"github.com/TeaStealers-backend-sem4/internal/stat"
 	"github.com/TeaStealers-backend-sem4/pkg/config"
 	"github.com/TeaStealers-backend-sem4/pkg/logger"
 	"github.com/TeaStealers-backend-sem4/pkg/utils"
@@ -16,15 +15,12 @@ import (
 )
 
 type AudioHandler struct {
-	// uc represents the usecase interface for authentication.
-	statUc stat.StatUsecase
 	logger logger.Logger
 	cfg    *config.Config
 }
 
-// NewAuthHandler creates a new instance of AuthHandler.
-func NewAudioHandler(uc stat.StatUsecase, cfg *config.Config, logr logger.Logger) *AudioHandler {
-	return &AudioHandler{statUc: uc, cfg: cfg, logger: logr}
+func NewAudioHandler(cfg *config.Config, logr logger.Logger) *AudioHandler {
+	return &AudioHandler{cfg: cfg, logger: logr}
 }
 
 func (h *AudioHandler) TranscribeWordHandler(w http.ResponseWriter, r *http.Request) {

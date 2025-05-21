@@ -33,13 +33,11 @@ services:
       - '8080:8080'
     env_file:
       - .env
-    volumes:
-      - "ouzi_dir:/ouzi/audio"  # Именованный volume для хранения аудио
     networks:
       - ouzi-network
   minio:
     image: quay.io/minio/minio:latest
-    command: server /data --console-address ":9001"  # Указываем локальный путь /data
+    command: server /data --console-address ":9001"
     ports:
       - "9000:9000"  # S3 API
       - "9001:9001"  # Console
@@ -52,14 +50,10 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - minio_data:/data  # Том для хранения данных
+      - minio_data:/data
     networks:
       - ouzi-network
 volumes:
-  gragana_ouzi:
-    driver: local
-  ouzi_dir:  # Именованный volume
-    driver: local
   minio_data:  # Именованный volume для MinIO
     driver: local
   postgresdb-data:

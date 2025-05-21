@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-// GenerateToken returns a new JWT token for the given user.
 func GenerateToken(user *models.User) (string, time.Time, error) {
 	exp := time.Now().Add(time.Hour * 24)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -26,7 +25,6 @@ func GenerateToken(user *models.User) (string, time.Time, error) {
 	return tokenStr, exp, nil
 }
 
-// ParseToken parses the provided JWT token string and returns the parsed token.
 func ParseToken(token string) (*jwt.Token, error) {
 	return jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -36,7 +34,6 @@ func ParseToken(token string) (*jwt.Token, error) {
 	})
 }
 
-// ParseClaims parses the user ID from the JWT token claims.
 func ParseClaims(claims *jwt.Token) (uuid.UUID, int, error) {
 	payloadMap, ok := claims.Claims.(jwt.MapClaims)
 	if !ok {
@@ -58,7 +55,6 @@ func ParseClaims(claims *jwt.Token) (uuid.UUID, int, error) {
 	return id, int(levelStr), nil
 }
 
-// TokenCookie creates a new cookie for storing the authentication token.
 func TokenCookie(name, token string, exp time.Time) *http.Cookie {
 	return &http.Cookie{
 		Name:     name,

@@ -12,17 +12,14 @@ import (
 	"github.com/satori/uuid"
 )
 
-// AuthUsecase represents the usecase for authentication.
 type AuthUsecase struct {
 	repo auth.AuthRepo
 }
 
-// NewAuthUsecase creates a new instance of AuthUsecase.
 func NewAuthUsecase(repo auth.AuthRepo) *AuthUsecase {
 	return &AuthUsecase{repo: repo}
 }
 
-// SignUp handles the user registration process.
 func (u *AuthUsecase) SignUp(ctx context.Context, data *models.UserSignUpData) (*models.User, string, time.Time, error) {
 	newUser := &models.User{
 		ID:           uuid.NewV4(),
@@ -44,7 +41,6 @@ func (u *AuthUsecase) SignUp(ctx context.Context, data *models.UserSignUpData) (
 	return userResponse, token, exp, nil
 }
 
-// Login handles the user login process.
 func (u *AuthUsecase) Login(ctx context.Context, data *models.UserLoginData) (*models.User, string, time.Time, error) {
 	user, err := u.repo.CheckUser(ctx, data.Email, utils.GenerateHashString(data.Password))
 	if err != nil {
@@ -59,7 +55,6 @@ func (u *AuthUsecase) Login(ctx context.Context, data *models.UserLoginData) (*m
 	return user, token, exp, nil
 }
 
-// CheckAuth checking autorizing
 func (u *AuthUsecase) CheckAuth(ctx context.Context, token string) (uuid.UUID, error) {
 	claims, err := jwt.ParseToken(token)
 	if err != nil {

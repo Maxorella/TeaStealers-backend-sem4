@@ -10,10 +10,8 @@ import (
 	"time"
 )
 
-// CookieName represents the name of the JWT cookie.
 const CookieName = "jwt-ouzi"
 
-// JwtMiddleware is a middleware function that handles JWT authentication.
 func JwtMiddleware(next http.Handler, repo auth.AuthRepo) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")

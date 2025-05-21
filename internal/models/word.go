@@ -2,7 +2,6 @@ package models
 
 import (
 	"github.com/satori/uuid"
-	"html"
 )
 
 type CreateWordData struct {
@@ -43,13 +42,6 @@ type ExerciseProgress struct {
 type IdStruct struct {
 	Id *int `json:"id"`
 }
-
-func (wd *CreateWordData) Sanitize() {
-	wd.Word = html.EscapeString(wd.Word)
-	wd.Transcription = html.EscapeString(wd.Transcription)
-	wd.Translation = html.EscapeString(wd.Translation)
-}
-
 type WordData struct {
 	WordID        *int   `json:"id,omitempty"`
 	Word          string `json:"word"`
@@ -57,13 +49,6 @@ type WordData struct {
 	Transcription string `json:"transcription"`
 	AudioLink     string `json:"audio_link"`
 	Progress      *int   `json:"progress,omitempty"`
-}
-
-func (wd *WordData) Sanitize() {
-	wd.Word = html.EscapeString(wd.Word)
-	wd.Topic = html.EscapeString(wd.Topic)
-	wd.Transcription = html.EscapeString(wd.Transcription)
-	wd.AudioLink = html.EscapeString(wd.AudioLink)
 }
 
 type Exercise struct {

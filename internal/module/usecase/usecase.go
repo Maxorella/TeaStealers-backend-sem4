@@ -16,7 +16,7 @@ func NewModuleUsecase(statrep *moduleRep.ModuleRepo, logger logger.Logger) *Modu
 }
 
 func (uc *ModuleUsecase) CreateModuleWord(ctx context.Context, moduleName string) (int, error) {
-	//	requestId := utils2.GetRequestIDFromCtx(ctx)
+	//	requestId := utils.GetRequestIDFromCtx(ctx)
 	tx, err := uc.Repo.BeginTx(ctx)
 	if err != nil {
 		return -1, err
@@ -32,7 +32,7 @@ func (uc *ModuleUsecase) CreateModuleWord(ctx context.Context, moduleName string
 }
 
 func (uc *ModuleUsecase) CreateModulePhrase(ctx context.Context, moduleName string) (int, error) {
-	//	requestId := utils2.GetRequestIDFromCtx(ctx)
+	//	requestId := utils.GetRequestIDFromCtx(ctx)
 	tx, err := uc.Repo.BeginTx(ctx)
 	if err != nil {
 		return -1, err

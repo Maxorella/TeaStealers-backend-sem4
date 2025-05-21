@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"github.com/TeaStealers-backend-sem4/internal/models"
 	"github.com/TeaStealers-backend-sem4/pkg/logger"
-	utils2 "github.com/TeaStealers-backend-sem4/pkg/utils"
+	"github.com/TeaStealers-backend-sem4/pkg/utils"
 )
 
 type ModuleRepo struct {
 	db     *sql.DB
 	logger logger.Logger
-	// cfg    *config.Config
-	// metricsC metrics.MetricsHTTP
 }
 
 func NewRepository(db *sql.DB, logger logger.Logger) *ModuleRepo {
@@ -29,7 +27,7 @@ func (r *ModuleRepo) BeginTx(ctx context.Context) (models.Transaction, error) {
 }
 
 func (r *ModuleRepo) InsertModuleWord(ctx context.Context, tx models.Transaction, moduleName string) (int, error) {
-	requestId := utils2.GetRequestIDFromCtx(ctx)
+	requestId := utils.GetRequestIDFromCtx(ctx)
 
 	var id int
 	err := r.db.QueryRow(CreateModuleWord, moduleName).Scan(&id)
@@ -42,7 +40,7 @@ func (r *ModuleRepo) InsertModuleWord(ctx context.Context, tx models.Transaction
 }
 
 func (r *ModuleRepo) InsertModulePhrase(ctx context.Context, tx models.Transaction, moduleName string) (int, error) {
-	requestId := utils2.GetRequestIDFromCtx(ctx)
+	requestId := utils.GetRequestIDFromCtx(ctx)
 
 	var id int
 	err := r.db.QueryRow(CreateModulePhrase, moduleName).Scan(&id)

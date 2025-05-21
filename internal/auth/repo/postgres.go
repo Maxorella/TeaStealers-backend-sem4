@@ -8,17 +8,14 @@ import (
 	"github.com/satori/uuid"
 )
 
-// AuthRepo represents a repository for authentication.
 type AuthRepo struct {
 	db *sql.DB
 }
 
-// NewRepository creates a new instance of AuthRepo.
 func NewRepository(db *sql.DB) *AuthRepo {
 	return &AuthRepo{db: db}
 }
 
-// CreateUser creates a new user in the database.
 func (r *AuthRepo) CreateUser(ctx context.Context, user *models.User) (*models.User, error) {
 	insert := `INSERT INTO users (id, email, name, passwordhash) VALUES ($1, $2, $3, $4)`
 	if _, err := r.db.ExecContext(ctx, insert, user.ID, user.Email, user.Name, user.PasswordHash); err != nil {
@@ -35,7 +32,6 @@ func (r *AuthRepo) CreateUser(ctx context.Context, user *models.User) (*models.U
 	return newUser, nil
 }
 
-// GetUserByLogin retrieves a user from the database by their login.
 func (r *AuthRepo) GetUserByLogin(ctx context.Context, login string) (*models.User, error) {
 	query := `SELECT id, email, passwordhash, levelupdate FROM users WHERE email = $1`
 
@@ -49,7 +45,6 @@ func (r *AuthRepo) GetUserByLogin(ctx context.Context, login string) (*models.Us
 	return user, nil
 }
 
-// GetUserByLogin retrieves a user from the database by their login.
 func (r *AuthRepo) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	query := `SELECT id, email, name, passwordhash, levelupdate FROM users WHERE id = $1`
 
@@ -63,7 +58,6 @@ func (r *AuthRepo) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User,
 	return user, nil
 }
 
-// CheckUser checks if the user with the given login and password hash exists in the database.
 func (r *AuthRepo) CheckUser(ctx context.Context, login string, passwordHash string) (*models.User, error) {
 	user, err := r.GetUserByLogin(ctx, login)
 	if err != nil {

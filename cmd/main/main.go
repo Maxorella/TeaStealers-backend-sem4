@@ -9,19 +9,16 @@ import (
 	moduleH "github.com/TeaStealers-backend-sem4/internal/module/delivery"
 	moduleRep "github.com/TeaStealers-backend-sem4/internal/module/repo"
 	moduleUc "github.com/TeaStealers-backend-sem4/internal/module/usecase"
-	statHl "github.com/TeaStealers-backend-sem4/internal/stat/delivery"
-	statRep "github.com/TeaStealers-backend-sem4/internal/stat/repo"
-	statUc "github.com/TeaStealers-backend-sem4/internal/stat/usecase"
 	wordH "github.com/TeaStealers-backend-sem4/internal/word/delivery"
 
 	wordRep "github.com/TeaStealers-backend-sem4/internal/word/repo"
 	wordUc "github.com/TeaStealers-backend-sem4/internal/word/usecase"
 	"github.com/TeaStealers-backend-sem4/pkg/config"
 	"github.com/TeaStealers-backend-sem4/pkg/logger"
-	middleware2 "github.com/TeaStealers-backend-sem4/pkg/middleware"
+	middleware "github.com/TeaStealers-backend-sem4/pkg/middleware"
 	minioS "github.com/TeaStealers-backend-sem4/pkg/minio"
 	minioH "github.com/TeaStealers-backend-sem4/pkg/minio/delivery"
-	utils2 "github.com/TeaStealers-backend-sem4/pkg/utils"
+	utils "github.com/TeaStealers-backend-sem4/pkg/utils"
 
 	authH "github.com/TeaStealers-backend-sem4/internal/auth/delivery"
 	authR "github.com/TeaStealers-backend-sem4/internal/auth/repo"
@@ -42,7 +39,7 @@ func main() {
 	cfg := config.MustLoad()
 	logr := logger.NewSlogStdOutLogger()
 	logr.LogDebug("started slog")
-	//logr := logger.NewSlogLogger("log.txt") TODO если хотим записывать в файл
+	//logr := logger.NewSlogLogger("log.txt") если записывать в файл
 
 	db, err := sql.Open("postgres", fmt.Sprintf("postgres://%v:%v@%v:%v/%v?sslmode=disable",
 		os.Getenv("DB_USER"),
@@ -61,9 +58,8 @@ func main() {
 	}
 
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
-	accessLogMiddleware := middleware2.NewAccessLogMiddleware(logr)
-	r.Use(middleware2.RequestIDMiddleware, middleware2.CORSMiddleware, accessLogMiddleware)
-
+	accessLogMiddleware := middleware.NewAccessLogMiddleware(logr)
+	r.Use(middleware.RequestIDMiddleware, middleware.CORSMiddleware, accessLogMiddleware)
 	r.HandleFunc("/ping", pingPongHandler).Methods(http.MethodGet)
 
 	minClient := minioS.NewMinioClient(cfg, logr)
@@ -76,81 +72,55 @@ func main() {
 	minH := minioH.NewMinioHandler(minClient, cfg, logr)
 	minH.RegisterRoutes(r)
 
-	minioStorageClient := utils2.NewFileStorageClient(cfg.MinCli.AddressPort)
+	minioStorageClient := utils.NewFileStorageClient(cfg.MinCli.AddressPort)
 
 	wRepo := wordRep.NewRepository(db, logr)
-	statRepo := statRep.NewRepository(db, logr)
-
-	statUsecase := statUc.NewStatUsecase(statRepo, wRepo, logr)
-	wordUsecase := wordUc.NewWordUsecase(wRepo, statRepo, logr)
-
-	audioHandler := audioHl.NewAudioHandler(statUsecase, cfg, logr)
-	statHandler := statHl.NewStatHandler(statUsecase, cfg, logr, minioStorageClient)
-	wordHandler := wordH.NewWordHandler(wordUsecase, statUsecase, cfg, logr, minioStorageClient)
-
+	wordUsecase := wordUc.NewWordUsecase(wRepo, logr)
+	audioHandler := audioHl.NewAudioHandler(cfg, logr)
+	wordHandler := wordH.NewWordHandler(wordUsecase, cfg, logr, minioStorageClient)
 	modulRep := moduleRep.NewRepository(db, logr)
 	modulUc := moduleUc.NewModuleUsecase(modulRep, logr)
 	modulHandler := moduleH.NewModuleHandler(modulUc, cfg, logr)
-	// audio := r.PathPrefix("/audio").Subrouter()
-
 	authRepo := authR.NewRepository(db)
 	authUsecase := authUc.NewAuthUsecase(authRepo)
 	autHandler := authH.NewAuthHandler(authUsecase)
 
 	r.HandleFunc("/register", autHandler.SignUp).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/login", autHandler.Login).Methods(http.MethodPost, http.MethodOptions)
-	r.Handle("/logout", middleware2.JwtMiddleware(http.HandlerFunc(autHandler.Logout), authRepo)).Methods(http.MethodGet, http.MethodOptions)
-	r.Handle("/change-password", middleware2.JwtMiddleware(http.HandlerFunc(autHandler.Logout), authRepo)).Methods(http.MethodPost, http.MethodOptions)
-	r.Handle("/me", middleware2.JwtMiddleware(http.HandlerFunc(autHandler.MeHandler), authRepo)).Methods(http.MethodGet)
+	r.Handle("/logout", middleware.JwtMiddleware(http.HandlerFunc(autHandler.Logout), authRepo)).Methods(http.MethodGet, http.MethodOptions)
+	r.Handle("/change-password", middleware.JwtMiddleware(http.HandlerFunc(autHandler.UpdateUserPassword), authRepo)).Methods(http.MethodPost, http.MethodOptions)
+	r.Handle("/me", middleware.JwtMiddleware(http.HandlerFunc(autHandler.MeHandler), authRepo)).Methods(http.MethodGet)
 	//r.HandleFunc("/check_auth", autHandler.CheckAuth).Methods(http.MethodGet, http.MethodOptions)
 
 	r.Handle("/current-word-module",
-		middleware2.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetCurrentModuleWordHandler), authRepo)).Methods(http.MethodGet)
-
+		middleware.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetCurrentModuleWordHandler), authRepo)).Methods(http.MethodGet)
 	r.Handle("/current-phrase-module",
-		middleware2.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetCurrentModulePhraseHandler), authRepo)).Methods(http.MethodGet)
+		middleware.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetCurrentModulePhraseHandler), authRepo)).Methods(http.MethodGet)
 
 	r.Handle("/create-word-module", http.HandlerFunc(modulHandler.CreateModuleWordHandler)).Methods(http.MethodPost)
 	r.Handle("/create-phrase-module", http.HandlerFunc(modulHandler.CreateModulePhraseHandler)).Methods(http.MethodPost)
+
 	r.Handle("/word-exercises", http.HandlerFunc(wordHandler.CreateWordExerciseHandler)).Methods(http.MethodPost)
 	r.Handle("/phrases-exercises", http.HandlerFunc(wordHandler.CreatePhraseExerciseHandler)).Methods(http.MethodPost)
 
 	r.Handle("/exercise-progress",
-		middleware2.JwtMiddleware(http.HandlerFunc(wordHandler.UpdateProgressHandler), authRepo)).Methods(http.MethodPost)
+		middleware.JwtMiddleware(http.HandlerFunc(wordHandler.UpdateProgressHandler), authRepo)).Methods(http.MethodPost)
 
 	r.Handle("/word-modules", http.HandlerFunc(wordHandler.WordModulesHandler)).Methods(http.MethodGet)
 	r.Handle("/phrase-modules", http.HandlerFunc(wordHandler.PhraseModulesHandler)).Methods(http.MethodGet)
 
 	r.Handle("/word-modules/{id}/exercises",
-		middleware2.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetWordModuleExercisesHandler), authRepo)).Methods(http.MethodGet)
-
+		middleware.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetWordModuleExercisesHandler), authRepo)).Methods(http.MethodGet)
 	r.Handle("/phrase-modules/{id}/exercises",
-		middleware2.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetPhraseModuleExercisesHandler), authRepo)).Methods(http.MethodGet)
+		middleware.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetPhraseModuleExercisesHandler), authRepo)).Methods(http.MethodGet)
 
 	r.Handle("/transcribe-word", http.HandlerFunc(audioHandler.TranscribeWordHandler)).Methods(http.MethodPost, http.MethodOptions)
 	r.Handle("/transcribe-phrase", http.HandlerFunc(audioHandler.TranscribePhraseHandler)).Methods(http.MethodPost, http.MethodOptions)
 
-	word := r.PathPrefix("/word").Subrouter()
-	topic := r.PathPrefix("/topic").Subrouter()
 	tip := r.PathPrefix("/tip").Subrouter()
-	//	user.Handle("/me", middleware.JwtMiddleware(http.HandlerFunc(userHandler.GetCurUser), authRepo)).Methods(http.MethodGet, http.MethodOptions)
-
-	//word.Handle("/create_word", http.HandlerFunc(wordHandler.CreateWord)).Methods(http.MethodPost)
-	word.Handle("/words_with_topic", http.HandlerFunc(wordHandler.WordsWithTopicHandler)).Methods(http.MethodPost)
-	word.Handle("/{word}", http.HandlerFunc(wordHandler.GetWord)).Methods(http.MethodGet)
-	topic.Handle("/all_topics", http.HandlerFunc(statHandler.GetAllTopics)).Methods(http.MethodGet)
-	topic.Handle("/topic_progress", http.HandlerFunc(wordHandler.GetTopicProgressHandler)).Methods(http.MethodGet)
 	tip.Handle("/get_tip", http.HandlerFunc(wordHandler.GetTipHandler)).Methods(http.MethodPost)
 	tip.Handle("/upload_tip", http.HandlerFunc(wordHandler.UploadTipHandler)).Methods(http.MethodPost)
-	// tip := r.PathPrefix("/tip").Subrouter()
-	word.Handle("/rand/word", http.HandlerFunc(wordHandler.GetRandomWord)).Methods(http.MethodPost)
-	/*
-		word.Handle("/get_tags", http.HandlerFunc(wHandler.SelectTags)).Methods(http.MethodGet)
-		word.Handle("/words_with_tag", http.HandlerFunc(wHandler.SelectWordsWithTopic)).Methods(http.MethodPost)
 
-		tip.Handle("/upload_tip", http.HandlerFunc(wHandler.UploadTip)).Methods(http.MethodPost)
-		tip.Handle("/get_tip", http.HandlerFunc(wHandler.GetTip)).Methods(http.MethodPost)
-	*/
 	srv := &http.Server{
 		Addr:              ":8080",
 		Handler:           r,

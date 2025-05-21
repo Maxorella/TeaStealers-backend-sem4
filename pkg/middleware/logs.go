@@ -34,9 +34,6 @@ func NewAccessLogMiddleware(loggr logger.Logger) func(next http.Handler) http.Ha
 			}
 
 			requestID := utils.GetRequestIDFromCtx(r.Context())
-			//if requestID == "" {
-			//	requestID = "unknown"
-			//}
 
 			next.ServeHTTP(wrappedWriter, r)
 

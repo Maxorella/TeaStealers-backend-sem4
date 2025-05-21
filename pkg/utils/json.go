@@ -8,7 +8,6 @@ import (
 	"net/http"
 )
 
-// WriteError prints error in json
 func WriteError(w http.ResponseWriter, statusCode int, message string) {
 	errorResponse := struct {
 		Message string `json:"message"`
@@ -24,7 +23,6 @@ func WriteError(w http.ResponseWriter, statusCode int, message string) {
 	_, _ = w.Write(resp)
 }
 
-// WriteResponse writes a JSON response with the specified status code and data.
 func WriteResponse(w http.ResponseWriter, statusCode int, response interface{}) error {
 	respSuccess := struct {
 		StatusCode int         `json:"statusCode"`
@@ -44,7 +42,6 @@ func WriteResponse(w http.ResponseWriter, statusCode int, response interface{}) 
 	return nil
 }
 
-// WriteAudioResponse sends file HTTP in format multipart/form-data
 func WriteAudioResponse(w http.ResponseWriter, statusCode int, fileName string, fileContent []byte, text string) error {
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -72,7 +69,6 @@ func WriteAudioResponse(w http.ResponseWriter, statusCode int, fileName string, 
 	return err
 }
 
-// ReadRequestData reads and parses the request body into the provided structure.
 func ReadRequestData(r *http.Request, request interface{}) error {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
