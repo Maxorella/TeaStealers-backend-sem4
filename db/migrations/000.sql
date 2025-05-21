@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
                                      id UUID NOT NULL PRIMARY KEY,
                                      passwordHash TEXT CONSTRAINT passwordHash_length CHECK ( char_length(passwordHash) <= 40) NOT NULL,
                                      levelUpdate INTEGER NOT NULL DEFAULT 1,
+                                     name VARCHAR(50) NOT NULL,
                                      email TEXT NOT NULL UNIQUE,
                                      dateCreation TIMESTAMP NOT NULL DEFAULT NOW(),
                                      isDeleted BOOLEAN NOT NULL DEFAULT FALSE

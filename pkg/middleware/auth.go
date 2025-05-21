@@ -2,9 +2,11 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"github.com/TeaStealers-backend-sem4/internal/auth"
 	"github.com/TeaStealers-backend-sem4/pkg/jwt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -14,12 +16,21 @@ const CookieName = "jwt-ouzi"
 // JwtMiddleware is a middleware function that handles JWT authentication.
 func JwtMiddleware(next http.Handler, repo auth.AuthRepo) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie(CookieName)
-		if err != nil {
+		authHeader := r.Header.Get("Authorization")
+		fmt.Print(authHeader)
+		if authHeader == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		token := cookie.Value
+
+		tokenParts := strings.Split(authHeader, " ")
+		if len(tokenParts) != 2 || strings.ToLower(tokenParts[0]) != "bearer" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		fmt.Print(tokenParts)
+
+		token := tokenParts[1]
 		claims, err := jwt.ParseToken(token)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -60,12 +71,23 @@ func JwtMiddleware(next http.Handler, repo auth.AuthRepo) http.Handler {
 
 func JwtMiddlewareOptional(next http.Handler, repo auth.AuthRepo) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie(CookieName)
-		if err != nil {
+		authHeader := r.Header.Get("Authorization")
+		fmt.Print(authHeader)
+		if authHeader == "" {
 			next.ServeHTTP(w, r)
 			return
 		}
-		token := cookie.Value
+
+		tokenParts := strings.Split(authHeader, " ")
+		if len(tokenParts) != 2 || strings.ToLower(tokenParts[0]) != "bearer" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		fmt.Print(tokenParts)
+
+		token := tokenParts[1]
+		fmt.Print(token)
+
 		claims, err := jwt.ParseToken(token)
 		if err != nil {
 			next.ServeHTTP(w, r)

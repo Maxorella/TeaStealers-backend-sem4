@@ -100,7 +100,9 @@ func main() {
 	r.HandleFunc("/register", autHandler.SignUp).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/login", autHandler.Login).Methods(http.MethodPost, http.MethodOptions)
 	r.Handle("/logout", middleware2.JwtMiddleware(http.HandlerFunc(autHandler.Logout), authRepo)).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/check_auth", autHandler.CheckAuth).Methods(http.MethodGet, http.MethodOptions)
+	r.Handle("/change-password", middleware2.JwtMiddleware(http.HandlerFunc(autHandler.Logout), authRepo)).Methods(http.MethodPost, http.MethodOptions)
+	r.Handle("/me", middleware2.JwtMiddleware(http.HandlerFunc(autHandler.MeHandler), authRepo)).Methods(http.MethodGet)
+	//r.HandleFunc("/check_auth", autHandler.CheckAuth).Methods(http.MethodGet, http.MethodOptions)
 
 	r.Handle("/current-word-module",
 		middleware2.JwtMiddlewareOptional(http.HandlerFunc(wordHandler.GetCurrentModuleWordHandler), authRepo)).Methods(http.MethodGet)

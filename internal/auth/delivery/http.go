@@ -6,6 +6,7 @@ import (
 	"github.com/TeaStealers-backend-sem4/pkg/jwt"
 	"github.com/TeaStealers-backend-sem4/pkg/middleware"
 	"github.com/TeaStealers-backend-sem4/pkg/utils"
+	"github.com/satori/uuid"
 	"net/http"
 )
 
@@ -98,20 +99,72 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *AuthHandler) CheckAuth(w http.ResponseWriter, r *http.Request) {
-	tokenValue := r.Context().Value(middleware.CookieName)
-	if tokenValue == nil {
+func (h *AuthHandler) MeHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.Context().Value(middleware.CookieName)
+	if id == nil {
 		utils.WriteError(w, http.StatusUnauthorized, "token cookie not found")
 		return
 	}
-	token := tokenValue.(string)
+	uID := id.(uuid.UUID)
 
-	id, err := h.uc.CheckAuth(r.Context(), token)
+	user, err := h.uc.GetUserByID(r.Context(), uID)
 	if err != nil {
 		utils.WriteError(w, http.StatusUnauthorized, "jwt token is invalid")
 		return
 	}
-	if err = utils.WriteResponse(w, http.StatusOK, id); err != nil {
+	user.ID = uuid.Nil
+	if err := utils.WriteResponse(w, http.StatusOK, user); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+}
+
+/*func (h *AuthHandler) CheckAuth(w http.ResponseWriter, r *http.Request) {
+	id := r.Context().Value(middleware.CookieName)
+	if id == nil {
+		utils.WriteError(w, http.StatusUnauthorized, "token cookie not found")
+		return
+	}
+	uId := id.(string)
+
+	gotid, err := h.uc.CheckAuth(r.Context(), token)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	if err = utils.WriteResponse(w, http.StatusOK, gotid); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err.Error())
+	}
+}
+
+*/
+
+func (h *AuthHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
+	id := r.Context().Value(middleware.CookieName)
+	if id == nil {
+		utils.WriteError(w, http.StatusUnauthorized, "token cookie not found")
+		return
+	}
+	uID := id.(uuid.UUID)
+
+	dat := &models.UserUpdatePassword{
+		ID: uID,
+	}
+
+	if err := utils.ReadRequestData(r, &dat); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, "incorrect data format")
+		return
+	}
+
+	token, exp, err := h.uc.UpdateUserPassword(dat)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	http.SetCookie(w, jwt.TokenCookie(middleware.CookieName, token, exp))
+
+	if err := utils.WriteResponse(w, http.StatusOK, "success update password"); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, "error write response")
 	}
 }

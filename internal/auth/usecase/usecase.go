@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"github.com/TeaStealers-backend-sem4/internal/auth"
 	"github.com/TeaStealers-backend-sem4/internal/models"
 	"github.com/TeaStealers-backend-sem4/pkg/jwt"
@@ -26,6 +27,7 @@ func (u *AuthUsecase) SignUp(ctx context.Context, data *models.UserSignUpData) (
 	newUser := &models.User{
 		ID:           uuid.NewV4(),
 		Email:        data.Email,
+		Name:         data.Name,
 		PasswordHash: utils.GenerateHashString(data.Password),
 	}
 
@@ -68,4 +70,33 @@ func (u *AuthUsecase) CheckAuth(ctx context.Context, token string) (uuid.UUID, e
 		return uuid.Nil, err
 	}
 	return id, nil
+}
+
+func (u *AuthUsecase) GetUserByID(ctx context.Context, uID uuid.UUID) (*models.User, error) {
+	user, err := u.repo.GetUserByID(ctx, uID)
+	return user, err
+}
+
+func (u *AuthUsecase) UpdateUserPassword(data *models.UserUpdatePassword) (string, time.Time, error) {
+	oldPasswordHash := utils.GenerateHashString(data.OldPassword)
+	newPasswordHash := utils.GenerateHashString(data.NewPassword)
+	if oldPasswordHash == newPasswordHash {
+		return "", time.Now(), errors.New("passwords must not match")
+	}
+	if err := u.repo.CheckUserPassword(data.ID, oldPasswordHash); err != nil {
+		return "", time.Now(), errors.New("invalid old password")
+	}
+	level, err := u.repo.UpdateUserPassword(data.ID, newPasswordHash)
+	if err != nil {
+		return "", time.Now(), errors.New("incorrect id or passwordhash")
+	}
+	user := &models.User{
+		ID:          data.ID,
+		LevelUpdate: level,
+	}
+	token, exp, err := jwt.GenerateToken(user)
+	if err != nil {
+		return "", time.Now(), errors.New("unable to generate token")
+	}
+	return token, exp, nil
 }
