@@ -1,5 +1,30 @@
 services:
+  db:
+    container_name: postgres
+    image: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./db/migrations:/docker-entrypoint-initdb.d
+    env_file:
+      - ./.env
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ouzi-network
   main:
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     container_name: mainService
     build:
       context: ./
@@ -8,44 +33,32 @@ services:
       - '8080:8080'
     env_file:
       - .env
-    volumes:
-      - "ouzi_dir:/ouzi/audio"  # Именованный volume для хранения аудио
-#- "./examples/hello.wav:/ouzi/examples/hello.wav"  # Bind mount для локального файла
     networks:
       - ouzi-network
   minio:
     image: quay.io/minio/minio:latest
-    command: server --console-address ":9001" http://minio_data
-    expose:
-      - "9000"
-      - "9001"
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"  # S3 API
+      - "9001:9001"  # Console
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-f", "http://minio:9000/minio/health/live"]
       interval: 5s
       timeout: 5s
       retries: 5
     volumes:
-      - minio_data
-  minioclient:
-      container_name: minioClient
-      build:
-        context: ./
-        dockerfile: ./build/minioClient.Dockerfile
-      ports:
-        - '8081:8081'
-      env_file:
-        - .env
-      networks:
-        - ouzi-network
-
+      - minio_data:/data
+    networks:
+      - ouzi-network
 volumes:
-  ouzi_dir:  # Именованный volume
-    driver: local
   minio_data:  # Именованный volume для MinIO
     driver: local
+  postgresdb-data:
+    driver: local
+
 networks:
   ouzi-network:
     name: ouzi-network
